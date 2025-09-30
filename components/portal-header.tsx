@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ArrowLeft, Bell, Settings, LogOut } from "lucide-react"
@@ -39,6 +38,7 @@ export function PortalHeader({ title, description, icon, onBack }: PortalHeaderP
     <header className="border-b bg-card/50 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
+          {/* Left Section: Back button + Portal Info */}
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -46,10 +46,11 @@ export function PortalHeader({ title, description, icon, onBack }: PortalHeaderP
               className="bg-transparent h-8 w-8 sm:h-10 sm:w-10"
               onClick={handleBack}
             >
-              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
+
             <div className="flex items-center gap-3">
-              {icon}
+              <div className="flex-shrink-0">{icon}</div>
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-foreground">{title}</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
@@ -57,12 +58,13 @@ export function PortalHeader({ title, description, icon, onBack }: PortalHeaderP
             </div>
           </div>
 
+          {/* Right Section: Notifications, Settings, Avatar, Logout */}
           <div className="flex items-center gap-2 sm:gap-3">
             <Button variant="outline" size="icon" className="bg-transparent h-8 w-8 sm:h-10 sm:w-10">
-              <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button variant="outline" size="icon" className="bg-transparent h-8 w-8 sm:h-10 sm:w-10">
-              <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+              <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
               <AvatarFallback className="text-xs sm:text-sm">
@@ -81,7 +83,7 @@ export function PortalHeader({ title, description, icon, onBack }: PortalHeaderP
               className="bg-transparent h-8 w-8 sm:h-10 sm:w-10"
               onClick={handleLogout}
             >
-              <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </div>

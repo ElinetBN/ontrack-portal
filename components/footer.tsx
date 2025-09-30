@@ -98,7 +98,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2024 OnTrack Portal System. All rights reserved. | Developed for Government Excellence</p>
+          <p>&copy; 2025 OnTrack Portal System. All rights reserved. | Developed for Government Excellence</p>
         </div>
       </div>
     </footer>

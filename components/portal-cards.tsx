@@ -9,7 +9,6 @@ const portals = [
     title: "Tender & Procurement Portal",
     description: "Manage tender publication, electronic submission, automated evaluation, and contract management.",
     icon: FileText,
-    users: "Procurement Officers, Evaluators, Suppliers, Entity Admins",
     features: ["E-submission", "Automated Scoring", "Document Management", "Notifications"],
     href: "/portals/tender-procurement",
   },
@@ -18,7 +17,6 @@ const portals = [
     title: "Supplier Management & Development Portal",
     description: "Handle supplier onboarding, performance monitoring, and development planning.",
     icon: Users,
-    users: "Supplier Development Managers, Auditors, Suppliers",
     features: ["KPI Tracking", "Gap Analysis", "Training Programs", "Performance Reports"],
     href: "/portals/supplier-management",
   },
@@ -27,7 +25,6 @@ const portals = [
     title: "Project Management Portal",
     description: "Embedded project management for tenders and contracts with comprehensive tracking.",
     icon: FolderKanban,
-    users: "Project Managers, Procurement Officers, Finance Analysts",
     features: ["Task Management", "Timeline Tracking", "Resource Management", "Issue Logging"],
     href: "/portals/project-management",
   },
@@ -36,7 +33,6 @@ const portals = [
     title: "Budget & Inclusion Portal",
     description: "Track inclusive budget allocation and spending across sectors and demographics.",
     icon: PieChart,
-    users: "Finance Analysts, Entity Admins, Steering Committee",
     features: ["Budget Dashboards", "Variance Alerts", "Allocation Analytics", "Inclusion Metrics"],
     href: "/portals/budget-inclusion",
   },
@@ -45,7 +41,6 @@ const portals = [
     title: "Analytics & Reporting Portal",
     description: "Consolidated dashboards and reporting across all procurement and supplier activities.",
     icon: BarChart3,
-    users: "Executives, Auditors, Managers",
     features: ["Real-time KPIs", "Custom Reports", "Trend Analysis", "Compliance Tracking"],
     href: "/portals/analytics-reporting",
   },
@@ -56,17 +51,17 @@ export function PortalCards() {
     <section id="portals" className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Five Specialized Portals</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">Five Specialized Portals</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-balance">
             Each portal is designed for specific user roles and functions, providing targeted tools and insights.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-row gap-6 overflow-x-auto pb-4">
           {portals.map((portal) => {
             const IconComponent = portal.icon
             return (
-              <Card key={portal.id} className="h-full hover:shadow-lg transition-shadow">
+              <Card key={portal.id} className="min-w-[280px] flex-shrink-0 h-full hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="bg-primary/10 p-3 rounded-lg w-fit mb-3">
                     <IconComponent className="h-6 w-6 text-primary" />
@@ -75,11 +70,6 @@ export function PortalCards() {
                   <CardDescription className="text-sm">{portal.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Target Users:</h4>
-                    <p className="text-sm text-muted-foreground">{portal.users}</p>
-                  </div>
-
                   <div>
                     <h4 className="font-medium text-sm mb-2">Key Features:</h4>
                     <ul className="text-sm text-muted-foreground space-y-1">

@@ -126,7 +126,7 @@ export function SignInForm() {
 
         {/* Footer */}
         <div className="text-center text-xs text-muted-foreground">
-          <p>&copy; 2024 OnTrack Portal System. All rights reserved.</p>
+          <p>&copy; 2025 OnTrack Portal System. All rights reserved.</p>
           <p className="mt-1">Developed for Government Excellence</p>
         </div>
       </div>

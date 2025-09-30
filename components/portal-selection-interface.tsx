@@ -26,9 +26,8 @@ const portals = [
     description: "Manage tender publication, electronic submission, automated evaluation, and contract management.",
     icon: FileText,
     color: "bg-blue-500",
-    users: ["Procurement Officers", "Evaluators", "Suppliers", "Entity Admins"],
     features: ["E-submission", "Automated Scoring", "Document Management", "Notifications"],
-    notifications: 5,
+    // notifications: 5,
     href: "/portals/tender-procurement",
   },
   {
@@ -37,9 +36,8 @@ const portals = [
     description: "Handle supplier onboarding, performance monitoring, and development planning.",
     icon: Users,
     color: "bg-green-500",
-    users: ["Supplier Development Managers", "Auditors", "Suppliers"],
     features: ["KPI Tracking", "Gap Analysis", "Training Programs", "Performance Reports"],
-    notifications: 3,
+    // notifications: 3,
     href: "/portals/supplier-management",
   },
   {
@@ -50,7 +48,7 @@ const portals = [
     color: "bg-purple-500",
     users: ["Project Managers", "Procurement Officers", "Finance Analysts"],
     features: ["Task Management", "Timeline Tracking", "Resource Management", "Issue Logging"],
-    notifications: 8,
+    // notifications: 8,
     href: "/portals/project-management",
   },
   {
@@ -61,7 +59,7 @@ const portals = [
     color: "bg-orange-500",
     users: ["Finance Analysts", "Entity Admins", "Steering Committee"],
     features: ["Budget Dashboards", "Variance Alerts", "Allocation Analytics", "Inclusion Metrics"],
-    notifications: 2,
+    // notifications: 2,
     href: "/portals/budget-inclusion",
   },
   {
@@ -72,7 +70,7 @@ const portals = [
     color: "bg-indigo-500",
     users: ["Executives", "Auditors", "Managers"],
     features: ["Real-time KPIs", "Custom Reports", "Trend Analysis", "Compliance Tracking"],
-    notifications: 1,
+    // notifications: 1,
     href: "/portals/analytics-reporting",
   },
 ]
@@ -91,7 +89,7 @@ export function PortalSelectionInterface() {
                 <Building2 className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-foreground">OnTrack Portal System</h1>
+                <h1 className="text-lg sm:text-xl font-bold text-foreground">OnTrak Portal System</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">Select your portal to continue</p>
               </div>
             </div>
@@ -116,16 +114,17 @@ export function PortalSelectionInterface() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7x1 mx-auto">
           <div className="text-center mb-6 sm:mb-8">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">Welcome to OnTrack</h2>
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto text-balance px-4 sm:px-0">
-              Choose the portal that matches your role and responsibilities. Each portal provides specialized tools and
-              insights.
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">Welcome to OnTrak</h2>
+            <p className="text-lg sm:text-xl text-muted-foreground whitespace-nowrap mx-auto text-center px-4 sm:px-0">
+              Your platform for managing projects with greater efficiency, control, and insight.
             </p>
+
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Horizontal scrolling cards container */}
+          <div className="flex flex-nowrap overflow-x-auto gap-4 sm:gap-6 pb-4 -mx-4 px-4">
             {portals.map((portal) => {
               const IconComponent = portal.icon
               const isSelected = selectedPortal === portal.id
@@ -133,7 +132,7 @@ export function PortalSelectionInterface() {
               return (
                 <Card
                   key={portal.id}
-                  className={`h-full cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  className={`min-w-[300px] sm:min-w-[320px] flex-shrink-0 h-full cursor-pointer transition-all duration-200 hover:shadow-lg ${
                     isSelected ? "ring-2 ring-primary shadow-lg" : ""
                   }`}
                   onClick={() => setSelectedPortal(portal.id)}
@@ -143,28 +142,17 @@ export function PortalSelectionInterface() {
                       <div className={`${portal.color} p-2.5 sm:p-3 rounded-lg w-fit mb-2 sm:mb-3`}>
                         <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                       </div>
-                      {portal.notifications > 0 && (
+                      {/* {portal.notifications > 0 && (
                         <Badge variant="destructive" className="text-xs">
                           {portal.notifications}
                         </Badge>
-                      )}
+                      )} */}
                     </div>
                     <CardTitle className="text-base sm:text-lg leading-tight">{portal.title}</CardTitle>
                     <CardDescription className="text-sm leading-relaxed">{portal.description}</CardDescription>
                   </CardHeader>
 
                   <CardContent className="space-y-3 sm:space-y-4">
-                    <div>
-                      <h4 className="font-medium text-sm mb-2 text-muted-foreground">Target Users:</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {portal.users.map((user, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {user}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
                     <div>
                       <h4 className="font-medium text-sm mb-2 text-muted-foreground">Key Features:</h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
@@ -176,7 +164,7 @@ export function PortalSelectionInterface() {
                         ))}
                         {portal.features.length > 3 && (
                           <li className="text-xs text-muted-foreground/70">
-                            +{portal.features.length - 3} more features
+                            {/* +{portal.features.length - 3} more features */}
                           </li>
                         )}
                       </ul>
@@ -202,20 +190,20 @@ export function PortalSelectionInterface() {
           {/* Quick Access Section */}
           <div className="mt-8 sm:mt-12 p-4 sm:p-6 bg-muted/30 rounded-lg">
             <h3 className="text-lg font-semibold mb-3 sm:mb-4">Quick Access</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <Button variant="outline" className="justify-start bg-transparent h-10 sm:h-11">
+            <div className="flex flex-nowrap overflow-x-auto gap-3 sm:gap-4 pb-2 -mx-2 px-2">
+              <Button variant="outline" className="flex-shrink-0 justify-start bg-transparent h-10 sm:h-11 min-w-max">
                 <FileText className="mr-2 h-4 w-4" />
                 Recent Tenders
               </Button>
-              <Button variant="outline" className="justify-start bg-transparent h-10 sm:h-11">
+              <Button variant="outline" className="flex-shrink-0 justify-start bg-transparent h-10 sm:h-11 min-w-max">
                 <Users className="mr-2 h-4 w-4" />
                 My Suppliers
               </Button>
-              <Button variant="outline" className="justify-start bg-transparent h-10 sm:h-11">
+              <Button variant="outline" className="flex-shrink-0 justify-start bg-transparent h-10 sm:h-11 min-w-max">
                 <FolderKanban className="mr-2 h-4 w-4" />
                 Active Projects
               </Button>
-              <Button variant="outline" className="justify-start bg-transparent h-10 sm:h-11">
+              <Button variant="outline" className="flex-shrink-0 justify-start bg-transparent h-10 sm:h-11 min-w-max">
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Dashboard
               </Button>

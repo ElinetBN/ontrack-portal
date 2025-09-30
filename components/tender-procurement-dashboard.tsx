@@ -23,6 +23,7 @@ import {
   Calendar,
   DollarSign,
   Building2,
+  
 } from "lucide-react"
 
 const tenders = [
@@ -32,7 +33,7 @@ const tenders = [
     department: "Information Technology",
     status: "Open",
     deadline: "2024-02-15",
-    budget: "R 2,500,000",
+    budget: "R ",
     submissions: 12,
     category: "Technology",
   },
@@ -42,7 +43,7 @@ const tenders = [
     department: "Facilities Management",
     status: "Evaluation",
     deadline: "2024-01-30",
-    budget: "R 850,000",
+    budget: "R ",
     submissions: 8,
     category: "Supplies",
   },
@@ -52,7 +53,7 @@ const tenders = [
     department: "Security",
     status: "Awarded",
     deadline: "2024-01-20",
-    budget: "R 1,200,000",
+    budget: "R ",
     submissions: 15,
     category: "Services",
   },
@@ -65,7 +66,7 @@ const submissions = [
     supplier: "TechCorp Solutions",
     submittedDate: "2024-01-25",
     status: "Under Review",
-    score: 85,
+    score: "",
     documents: 5,
   },
   {
@@ -74,7 +75,7 @@ const submissions = [
     supplier: "Digital Dynamics",
     submittedDate: "2024-01-24",
     status: "Evaluated",
-    score: 92,
+    score: "",
     documents: 6,
   },
   {
@@ -83,7 +84,7 @@ const submissions = [
     supplier: "Office Plus",
     submittedDate: "2024-01-28",
     status: "Compliant",
-    score: 78,
+    score: "",
     documents: 4,
   },
 ]
@@ -123,8 +124,8 @@ export function TenderProcurementDashboard() {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">24</div>
-                  <p className="text-xs text-muted-foreground">+3 from last month</p>
+                   <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs text-muted-foreground">0 from last month</p> 
                 </CardContent>
               </Card>
 
@@ -134,8 +135,8 @@ export function TenderProcurementDashboard() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">156</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
+                 <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs text-muted-foreground">0% from last month</p> 
                 </CardContent>
               </Card>
 
@@ -145,21 +146,22 @@ export function TenderProcurementDashboard() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8</div>
-                  <p className="text-xs text-muted-foreground">2 urgent</p>
+                 <div className="text-2xl font-bold">0</div>
+                  <p className="text-xs text-muted-foreground">0 urgent</p> 
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="h-4 w-4 text-muted-foreground flex items-center justify-center font-bold text-sm">R</span>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">R 45.2M</div>
-                  <p className="text-xs text-muted-foreground">Current tender value</p>
+                  <div className="text-2xl font-bold">R 0</div>
+                  <p className="text-xs text-muted-foreground">Current tender value</p> 
                 </CardContent>
               </Card>
+
             </div>
 
             {/* Recent Activity */}

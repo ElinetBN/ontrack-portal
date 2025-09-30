@@ -7,37 +7,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Building2, ArrowLeft, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
-  const [selectedPortal, setSelectedPortal] = useState("")
 
-  const portals = [
-    { value: "tender-procurement", label: "Tender & Procurement Portal" },
-    { value: "supplier-management", label: "Supplier Management Portal" },
-    { value: "project-management", label: "Project Management Portal" },
-    { value: "budget-inclusion", label: "Budget & Inclusion Portal" },
-    { value: "analytics-reporting", label: "Analytics & Reporting Portal" },
-  ]
+  // 🔹 Default portal since selection is removed
+  const defaultPortal = "tender-procurement"
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
-    if (selectedPortal) {
-      const userData = {
-        id: "1", // In real app, this would come from authentication
-        email: "user@example.com", // This would come from form
-        name: "John Doe", // This would come from authentication
-        portal: selectedPortal,
-      }
 
-      setAuthCookie(userData)
-      window.location.href = `/portals/${selectedPortal}`
-    } else {
-      alert("Please select a portal to continue")
+    const userData = {
+      id: "1", // Replace with real user id after authentication
+      email: "user@example.com", // Replace with actual input value
+      name: "John Doe", // Replace with real user name
+      portal: defaultPortal,
     }
+
+    setAuthCookie(userData)
+    window.location.href = `/portals/${defaultPortal}`
   }
 
   return (
@@ -73,6 +63,7 @@ export function SignInForm() {
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             <form onSubmit={handleSignIn} className="space-y-4">
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email Address
@@ -86,6 +77,7 @@ export function SignInForm() {
                 />
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">
                   Password
@@ -114,27 +106,7 @@ export function SignInForm() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="portal" className="text-sm font-medium">
-                  Select Portal <span className="text-red-500">*</span>
-                </Label>
-                <Select value={selectedPortal} onValueChange={setSelectedPortal} required>
-                  <SelectTrigger className="h-10 sm:h-11">
-                    <SelectValue placeholder="Choose which portal to access" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {portals.map((portal) => (
-                      <SelectItem key={portal.value} value={portal.value}>
-                        {portal.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Select the portal you need to access. You can request access to additional portals later.
-                </p>
-              </div>
-
+              {/* Links */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-sm">
                 <Link href="/auth/forgot-password" className="text-primary hover:underline">
                   Forgot password?
@@ -144,10 +116,9 @@ export function SignInForm() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full h-10 sm:h-11" disabled={!selectedPortal}>
-                {selectedPortal
-                  ? `Sign In to ${portals.find((p) => p.value === selectedPortal)?.label}`
-                  : "Select Portal to Continue"}
+              {/* Sign In Button */}
+              <Button type="submit" className="w-full h-10 sm:h-11">
+                Sign In
               </Button>
             </form>
           </CardContent>

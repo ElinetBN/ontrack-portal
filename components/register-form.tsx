@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,43 +15,32 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
-  const [selectedPortal, setSelectedPortal] = useState("")
+  const [selectedProjects, setSelectedProjects] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
 
-  const userRoles = [
-    { value: "procurement-officer", label: "Procurement Officer" },
-    { value: "supplier", label: "Supplier" },
-    { value: "evaluator", label: "Evaluator" },
-    { value: "project-manager", label: "Project Manager" },
-    { value: "finance-analyst", label: "Finance Analyst" },
-    { value: "entity-admin", label: "Entity Administrator" },
-    { value: "auditor", label: "Auditor" },
-    { value: "executive", label: "Executive" },
-  ]
-
-  const organizations = [
-    { value: "national-treasury", label: "National Treasury" },
-    { value: "provincial-govt", label: "Provincial Government" },
-    { value: "local-municipality", label: "Local Municipality" },
-    { value: "state-owned-entity", label: "State-Owned Entity" },
-    { value: "private-supplier", label: "Private Supplier" },
-    { value: "consulting-firm", label: "Consulting Firm" },
-  ]
-
-  const portals = [
-    { value: "tender-procurement", label: "Tender & Procurement Portal" },
-    { value: "supplier-management", label: "Supplier Management Portal" },
-    { value: "project-management", label: "Project Management Portal" },
-    { value: "budget-inclusion", label: "Budget & Inclusion Portal" },
-    { value: "analytics-reporting", label: "Analytics & Reporting Portal" },
+  const projects = [
+    { value: "project-owner", label: "Project Owner" },
+    { value: "quantity-surveyor", label: "Quantity Surveyor" },
+    { value: "architect", label: "Architect" },
+    { value: "structural-engineer", label: "Structural Engineer" },
+    { value: "mechanical-electrical", label: "Mechanical & Electrical Engineer" },
+    { value: "main-contractor", label: "Main Contractor" },
+    { value: "site-manager", label: "Site Manager" },
+    { value: "health-safety", label: "Health & Safety Officer" },
+    { value: "legal", label: "Legal" },
+    { value: "specialist-consultants", label: "Specialist Consultants" },
+    { value: "other", label: "Other" },
   ]
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault()
-    if (selectedPortal) {
-      window.location.href = `/portals/${selectedPortal}`
-    } else {
-      window.location.href = "/portal-selection"
-    }
+    // Show success message
+    setSuccessMessage("✅ Account created successfully. Redirecting to sign in...")
+
+    // Redirect to sign-in after short delay
+    setTimeout(() => {
+      window.location.href = "/auth/signin"
+    }, 2000) // waits 2 seconds before redirect
   }
 
   return (
@@ -111,68 +99,23 @@ export function RegisterForm() {
                 </div>
               </div>
 
-              {/* Organization Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Organization Information</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="organization">Organization Type</Label>
-                  <Select required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your organization type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.value} value={org.value}>
-                          {org.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="organizationName">Organization Name</Label>
-                  <Input id="organizationName" type="text" placeholder="Your organization name" required />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Primary Role</Label>
-                  <Select required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your primary role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userRoles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Portal Selection */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Portal Access</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="portal">Select Primary Portal</Label>
-                  <Select value={selectedPortal} onValueChange={setSelectedPortal} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose which portal you need access to" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {portals.map((portal) => (
-                        <SelectItem key={portal.value} value={portal.value}>
-                          {portal.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    You can request access to additional portals after registration.
-                  </p>
-                </div>
+              {/* Project Role */}
+              <div className="space-y-2">
+                <Label htmlFor="project-role" className="text-sm font-medium">
+                  Project Role
+                </Label>
+                <Select value={selectedProjects} onValueChange={setSelectedProjects} required>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select your project role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.value} value={project.value} className="text-sm">
+                        {project.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Security Information */}
@@ -268,8 +211,17 @@ export function RegisterForm() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full" disabled={!acceptedTerms || !selectedPortal}>
-                Create Account & Access Portal
+              {/* Success Message */}
+              {successMessage && (
+                <p className="text-green-600 text-sm font-medium text-center">{successMessage}</p>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!acceptedTerms || !selectedProjects}
+              >
+                Create Account
               </Button>
             </form>
           </CardContent>

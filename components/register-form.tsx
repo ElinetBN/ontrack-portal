@@ -77,53 +77,53 @@ export function RegisterForm() {
               {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" type="text" placeholder="John" required />
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="firstName" className="min-w-[120px] text-right">First Name</Label>
+                    <Input id="firstName" type="text" placeholder="John" required className="flex-1" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" type="text" placeholder="Doe" required />
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="lastName" className="min-w-[120px] text-right">Last Name</Label>
+                    <Input id="lastName" type="text" placeholder="Doe" required className="flex-1" />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="john.doe@organization.com" required />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" type="tel" placeholder="+27 12 345 6789" required />
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="email" className="min-w-[120px] text-right">Email Address</Label>
+                    <Input id="email" type="email" placeholder="john.doe@organization.com" required className="flex-1" />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="phone" className="min-w-[120px] text-right">Phone Number</Label>
+                    <Input id="phone" type="tel" placeholder="+27 12 345 6789" required className="flex-1" />
+                  </div>
                 </div>
               </div>
 
               {/* Project Role */}
-              <div className="space-y-2">
-                <Label htmlFor="project-role" className="text-sm font-medium">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="project-role" className="min-w-[120px] text-right text-sm font-medium">
                   Project Role
                 </Label>
-                <Select value={selectedProjects} onValueChange={setSelectedProjects} required>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select your project role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.value} value={project.value} className="text-sm">
-                        {project.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <Select value={selectedProjects} onValueChange={setSelectedProjects} required>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select your project role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.value} value={project.value} className="text-sm">
+                          {project.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Security Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Security Information</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
+                <div className="flex items-center justify-between gap-4">
+                  <Label htmlFor="password" className="min-w-[120px] text-right">Password</Label>
+                  <div className="relative flex-1">
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
@@ -147,9 +147,9 @@ export function RegisterForm() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <div className="relative">
+                <div className="flex items-center justify-between gap-4">
+                  <Label htmlFor="confirmPassword" className="min-w-[120px] text-right">Confirm Password</Label>
+                  <div className="relative flex-1">
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
@@ -176,53 +176,63 @@ export function RegisterForm() {
 
               {/* Terms and Conditions */}
               <div className="space-y-4">
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={acceptedTerms}
-                    onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
-                    required
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      I accept the terms and conditions
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      By registering, you agree to our{" "}
-                      <Link href="/terms" className="text-primary hover:underline">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="/privacy" className="text-primary hover:underline">
-                        Privacy Policy
-                      </Link>
-                      .
-                    </p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-[120px]"></div>
+                  <div className="flex items-start space-x-2 flex-1">
+                    <Checkbox
+                      id="terms"
+                      checked={acceptedTerms}
+                      onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                      required
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label
+                        htmlFor="terms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        I accept the terms and conditions
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        By registering, you agree to our{" "}
+                        <Link href="/terms" className="text-primary hover:underline">
+                          Terms of Service
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/privacy" className="text-primary hover:underline">
+                          Privacy Policy
+                        </Link>
+                        .
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <Link href="/auth/signin" className="text-primary hover:underline">
+                <div className="min-w-[120px]"></div>
+                <Link href="/auth/signin" className="text-primary hover:underline flex-1 text-right">
                   Already have an account?
                 </Link>
               </div>
 
               {/* Success Message */}
               {successMessage && (
-                <p className="text-green-600 text-sm font-medium text-center">{successMessage}</p>
+                <div className="flex justify-between gap-4">
+                  <div className="min-w-[120px]"></div>
+                  <p className="text-green-600 text-sm font-medium text-center flex-1">{successMessage}</p>
+                </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={!acceptedTerms || !selectedProjects}
-              >
-                Create Account
-              </Button>
+              <div className="flex justify-between gap-4">
+                <div className="min-w-[120px]"></div>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={!acceptedTerms || !selectedProjects}
+                >
+                  Create Account
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>

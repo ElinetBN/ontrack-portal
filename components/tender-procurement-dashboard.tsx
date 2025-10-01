@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { PortalHeader } from "@/components/portal-header"
 import {
@@ -29,6 +30,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   Upload,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  FileUp,
 } from "lucide-react"
 
 // Initial tenders data
@@ -146,6 +152,340 @@ const notifications = [
   }
 ]
 
+// Service categories
+const serviceCategories = [
+  "Plumbing",
+  "Electrical",
+  "Cleaning",
+  "Catering",
+  "Security",
+  "Construction",
+  "IT Services",
+  "Facilities Management",
+  "Landscaping",
+  "Maintenance",
+  "Consulting",
+  "Transportation"
+]
+
+// CIDB Grading levels
+const cidbGrading = [
+  "1GB",
+  "2GB",
+  "3GB",
+  "4GB",
+  "5GB",
+  "6GB",
+  "7GB",
+  "8GB",
+  "9GB"
+]
+
+// B-BBEE Levels
+const bbbeeLevels = [
+  "Level 1",
+  "Level 2",
+  "Level 3",
+  "Level 4",
+  "Level 5",
+  "Level 6",
+  "Level 7",
+  "Level 8",
+  "Non-Compliant"
+]
+
+// Evaluation criteria
+const evaluationCriteria = [
+  "Price Competitiveness",
+  "Technical Experience",
+  "B-BBEE Status",
+  "Safety Compliance",
+  "Quality Assurance",
+  "Project Methodology",
+  "Team Experience",
+  "Financial Stability",
+  "References",
+  "Innovation"
+]
+
+// Mandatory documents
+const mandatoryDocuments = [
+  "CIPC Registration Documents",
+  "Tax Clearance Certificate",
+  "B-BBEE Certificate",
+  "CIDB Certificate",
+  "Company Profile",
+  "Reference Letters",
+  "Insurance Certificates",
+  "Health and Safety Policy",
+  "CVs of Key Personnel",
+  "Quality Management System"
+]
+
+// Tender Review Component
+function TenderReviewComponent() {
+  const [isApproved, setIsApproved] = useState(false)
+  const [isRejected, setIsRejected] = useState(false)
+  const [requestChanges, setRequestChanges] = useState(false)
+  const [comment, setComment] = useState("")
+
+  const handleApprove = () => {
+    setIsApproved(true)
+    setIsRejected(false)
+    setRequestChanges(false)
+  }
+
+  const handleReject = () => {
+    setIsRejected(true)
+    setIsApproved(false)
+    setRequestChanges(false)
+  }
+
+  const handleRequestChanges = () => {
+    setRequestChanges(true)
+    setIsApproved(false)
+    setIsRejected(false)
+  }
+
+  const handleSubmitComment = () => {
+    if (comment.trim()) {
+      // Here you would typically send the comment to your backend
+      console.log("Comment submitted:", comment)
+      setComment("")
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <PortalHeader
+        title="Tender Review"
+        description="Review and approve tender submissions"
+        icon={
+          <div className="bg-blue-500 p-2 rounded-lg">
+            <FileText className="h-6 w-6 text-white" />
+          </div>
+        }
+      />
+
+      <main className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Left Sidebar - Navigation */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Tender Navigation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Checkbox id="dashboard" />
+                  <Label htmlFor="dashboard" className="font-medium cursor-pointer">
+                    Dashboard
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Checkbox id="tenders" />
+                  <Label htmlFor="tenders" className="font-medium cursor-pointer">
+                    Tenders
+                  </Label>
+                </div>
+                <div className="text-sm text-muted-foreground pl-6">
+                  Supply of Office Furniture
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 border rounded-lg bg-blue-50">
+                  <Checkbox id="reviews" checked readOnly />
+                  <Label htmlFor="reviews" className="font-medium cursor-pointer">
+                    Reviews
+                  </Label>
+                </div>
+                <div className="text-sm pl-6 space-y-2">
+                  <div className="font-medium">Reference</div>
+                  <div className="text-muted-foreground">TENDER-2024-001</div>
+                  <div className="font-medium">Closing Date</div>
+                  <div className="text-muted-foreground">April 30, 2024</div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Checkbox id="settings" />
+                  <Label htmlFor="settings" className="font-medium cursor-pointer">
+                    Settings
+                  </Label>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Supply of Office Furniture</CardTitle>
+                    <CardDescription>
+                      TENDER-2024-001 • Closing Date: April 30, 2024
+                    </CardDescription>
+                  </div>
+                  <Badge variant={isApproved ? "default" : isRejected ? "destructive" : "secondary"}>
+                    {isApproved ? "Approved" : isRejected ? "Rejected" : "Under Review"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Description Section */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Description</h3>
+                  <p className="text-muted-foreground">
+                    We are seeking bids for the supply and installation of office furniture for our new office spaces. 
+                    The tender includes desks, chairs, filing cabinets, and other office furniture. Please refer to 
+                    the attached documents for detailed specifications and requirements.
+                  </p>
+                </div>
+
+                <div className="border-t pt-6">
+                  {/* Attachments Section */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-4">Attachments</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox id="specification" />
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="specification" className="cursor-pointer">
+                          Specification.pdf
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox id="terms" />
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="terms" className="cursor-pointer">
+                          Terms.pdf
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox id="budget" />
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="budget" className="cursor-pointer">
+                          Budget.xlsx
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Section */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-4">Status</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox id="in-review" />
+                        <Label htmlFor="in-review" className="cursor-pointer">
+                          In Review
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <Checkbox id="approved" />
+                        <Label htmlFor="approved" className="cursor-pointer">
+                          Approved
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold mb-4">Review Actions</h3>
+                    <div className="flex flex-wrap gap-4">
+                      <Button
+                        onClick={handleApprove}
+                        variant={isApproved ? "default" : "outline"}
+                        className={isApproved ? "bg-green-600 hover:bg-green-700" : ""}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={handleReject}
+                        variant={isRejected ? "destructive" : "outline"}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Reject
+                      </Button>
+                      <Button
+                        onClick={handleRequestChanges}
+                        variant={requestChanges ? "secondary" : "outline"}
+                      >
+                        <AlertCircle className="mr-2 h-4 w-4" />
+                        Request Changes
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Comments Section */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Comments</h3>
+                    <div className="space-y-4">
+                      <div className="flex space-x-3">
+                        <Textarea
+                          placeholder="Add a comment..."
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      <Button onClick={handleSubmitComment} disabled={!comment.trim()}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Comment
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Additional Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Review Information</CardTitle>
+                <CardDescription>
+                  This review section is only accessible to project owners and project leads
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Reviewer Role:</span>
+                      <span>Project Lead</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Review Deadline:</span>
+                      <span>May 15, 2024</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Approval Required:</span>
+                      <span>Project Owner & Project Lead</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Bell className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Notifications:</span>
+                      <span>Enabled</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 // Tender Registration Popup Component
 function TenderRegistrationPopup({ 
   isOpen, 
@@ -156,40 +496,77 @@ function TenderRegistrationPopup({
   onClose: () => void;
   onTenderCreate: (tender: any) => void;
 }) {
+  const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
-    referenceNumber: "",
-    projectTitle: "",
-    budgetEstimate: "",
-    projectDescription: "",
-    selectedItems: [] as string[],
+    // Tender Information
+    tenderTitle: "",
+    tenderReference: "",
+    category: "",
+    tenderDescription: "",
+    supportingDocuments: [] as File[],
+    
+    // Project Details
+    location: "",
+    estimatedValue: "",
+    contractPeriod: "",
+    startDate: "",
+    endDate: "",
+    cidbGrading: "",
+    accreditation: "",
+    bbbeeLevel: "",
+    insuranceRequired: false,
+    universityVendorReg: false,
+    
+    // Submission Information
+    openingDate: "",
+    closingDate: "",
+    closingTime: "",
+    submissionMethod: "online",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    clarificationDeadline: "",
+    
+    // Evaluation & Compliance
+    evaluationCriteria: [] as string[],
+    mandatoryDocuments: [] as string[],
+    complianceAccepted: false,
+    
+    // Administrative
+    tenderStatus: "draft",
+    confidentiality: false,
+    tenderFee: "",
+    feeAmount: ""
   })
 
-  const requestItems = [
-    "Technical Specifications",
-    "Financial Proposal",
-    "Company Registration Documents",
-    "Tax Compliance Certificate",
-    "BEE Certificate",
-    "Project Timeline",
-    "Team CVs",
-    "Methodology Statement",
-    "Quality Assurance Plan",
-    "Health and Safety Policy",
-  ]
-
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
   }
 
-  const handleItemToggle = (item: string) => {
+  const handleCheckboxToggle = (field: string, item: string) => {
     setFormData(prev => ({
       ...prev,
-      selectedItems: prev.selectedItems.includes(item)
-        ? prev.selectedItems.filter(i => i !== item)
-        : [...prev.selectedItems, item]
+      [field]: prev[field].includes(item)
+        ? prev[field].filter(i => i !== item)
+        : [...prev[field], item]
+    }))
+  }
+
+  const handleFileUpload = (files: FileList) => {
+    const newFiles = Array.from(files)
+    setFormData(prev => ({
+      ...prev,
+      supportingDocuments: [...prev.supportingDocuments, ...newFiles]
+    }))
+  }
+
+  const removeFile = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      supportingDocuments: prev.supportingDocuments.filter((_, i) => i !== index)
     }))
   }
 
@@ -213,17 +590,6 @@ function TenderRegistrationPopup({
     return departments[Math.floor(Math.random() * departments.length)]
   }
 
-  const getRandomCategory = () => {
-    const categories = ["Technology", "Supplies", "Services", "Construction", "Consulting"]
-    return categories[Math.floor(Math.random() * categories.length)]
-  }
-
-  const getRandomDeadline = () => {
-    const date = new Date()
-    date.setDate(date.getDate() + Math.floor(Math.random() * 60) + 30)
-    return date.toISOString().split('T')[0]
-  }
-
   const formatBudget = (amount: string) => {
     const numericValue = parseInt(amount.replace(/\D/g, '') || '0')
     return `R ${numericValue.toLocaleString()}`
@@ -234,18 +600,27 @@ function TenderRegistrationPopup({
     
     // Create new tender object
     const newTender = {
-      id: generateTenderId(),
-      title: formData.projectTitle,
+      id: formData.tenderReference || generateTenderId(),
+      title: formData.tenderTitle,
       department: getRandomDepartment(),
-      status: "Open",
-      deadline: getRandomDeadline(),
-      budget: formatBudget(formData.budgetEstimate),
-      submissions: Math.floor(Math.random() * 15),
-      category: getRandomCategory(),
-      description: formData.projectDescription,
-      referenceNumber: formData.referenceNumber || `REF-${Math.floor(Math.random() * 1000)}`,
-      requestedItems: formData.selectedItems,
-      createdDate: new Date().toISOString().split('T')[0]
+      status: formData.tenderStatus === "published" ? "Open" : "Draft",
+      deadline: formData.closingDate,
+      budget: formatBudget(formData.estimatedValue),
+      submissions: 0,
+      category: formData.category,
+      description: formData.tenderDescription,
+      referenceNumber: formData.tenderReference,
+      requestedItems: formData.mandatoryDocuments,
+      createdDate: new Date().toISOString().split('T')[0],
+      location: formData.location,
+      contractPeriod: formData.contractPeriod,
+      cidbGrading: formData.cidbGrading,
+      bbbeeLevel: formData.bbbeeLevel,
+      contactPerson: formData.contactName,
+      contactEmail: formData.contactEmail,
+      contactPhone: formData.contactPhone,
+      submissionMethod: formData.submissionMethod,
+      tenderFee: formData.tenderFee ? `R ${formData.feeAmount}` : "No fee"
     }
 
     // Call the callback to add the new tender
@@ -253,135 +628,820 @@ function TenderRegistrationPopup({
 
     // Reset form
     setFormData({
-      referenceNumber: "",
-      projectTitle: "",
-      budgetEstimate: "",
-      projectDescription: "",
-      selectedItems: [],
+      tenderTitle: "",
+      tenderReference: "",
+      category: "",
+      tenderDescription: "",
+      supportingDocuments: [],
+      location: "",
+      estimatedValue: "",
+      contractPeriod: "",
+      startDate: "",
+      endDate: "",
+      cidbGrading: "",
+      accreditation: "",
+      bbbeeLevel: "",
+      insuranceRequired: false,
+      universityVendorReg: false,
+      openingDate: "",
+      closingDate: "",
+      closingTime: "",
+      submissionMethod: "online",
+      contactName: "",
+      contactEmail: "",
+      contactPhone: "",
+      clarificationDeadline: "",
+      evaluationCriteria: [],
+      mandatoryDocuments: [],
+      complianceAccepted: false,
+      tenderStatus: "draft",
+      confidentiality: false,
+      tenderFee: "",
+      feeAmount: ""
     })
     
+    setCurrentStep(1)
     onClose()
   }
 
   const handleClose = () => {
     setFormData({
-      referenceNumber: "",
-      projectTitle: "",
-      budgetEstimate: "",
-      projectDescription: "",
-      selectedItems: [],
+      tenderTitle: "",
+      tenderReference: "",
+      category: "",
+      tenderDescription: "",
+      supportingDocuments: [],
+      location: "",
+      estimatedValue: "",
+      contractPeriod: "",
+      startDate: "",
+      endDate: "",
+      cidbGrading: "",
+      accreditation: "",
+      bbbeeLevel: "",
+      insuranceRequired: false,
+      universityVendorReg: false,
+      openingDate: "",
+      closingDate: "",
+      closingTime: "",
+      submissionMethod: "online",
+      contactName: "",
+      contactEmail: "",
+      contactPhone: "",
+      clarificationDeadline: "",
+      evaluationCriteria: [],
+      mandatoryDocuments: [],
+      complianceAccepted: false,
+      tenderStatus: "draft",
+      confidentiality: false,
+      tenderFee: "",
+      feeAmount: ""
     })
+    setCurrentStep(1)
     onClose()
+  }
+
+  const nextStep = () => {
+    setCurrentStep(prev => Math.min(prev + 1, 5))
+  }
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1))
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold">Create New Service Request</h2>
+          <div>
+            <h2 className="text-xl font-bold">Create New Tender</h2>
+            <p className="text-sm text-muted-foreground">Step {currentStep} of 5</p>
+          </div>
           <Button variant="ghost" size="sm" onClick={handleClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Reference Number */}
-          <div className="space-y-2">
-            <Label htmlFor="referenceNumber">Reference number</Label>
-            <Input
-              id="referenceNumber"
-              placeholder="Enter reference number"
-              value={formData.referenceNumber}
-              onChange={(e) => handleInputChange("referenceNumber", e.target.value)}
-            />
-          </div>
-
-          {/* Project Title */}
-          <div className="space-y-2">
-            <Label htmlFor="projectTitle" className="flex items-center gap-1">
-              Project title <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="projectTitle"
-              placeholder="Enter project title"
-              value={formData.projectTitle}
-              onChange={(e) => handleInputChange("projectTitle", e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Budget Estimate */}
-          <div className="space-y-2">
-            <Label htmlFor="budgetEstimate" className="flex items-center gap-1">
-              Budget estimate <span className="text-red-500">*</span>
-            </Label>
-            <div className="relative">
-              <span className="absolute left-3 top-3 text-muted-foreground">R</span>
-              <Input
-                id="budgetEstimate"
-                placeholder="Enter budget estimate"
-                className="pl-8"
-                value={formData.budgetEstimate}
-                onChange={(e) => handleInputChange("budgetEstimate", e.target.value)}
-                required
+        {/* Progress Bar */}
+        <div className="px-6 pt-4">
+          <div className="flex justify-between mb-2">
+            {[1, 2, 3, 4, 5].map((step) => (
+              <div
+                key={step}
+                className={`flex-1 h-2 mx-1 rounded-full ${
+                  step <= currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
               />
-            </div>
+            ))}
           </div>
-
-          {/* Project Brief Description */}
-          <div className="space-y-2">
-            <Label htmlFor="projectDescription" className="flex items-center gap-1">
-              Project brief description <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="projectDescription"
-              placeholder="Provide a detailed description of the project..."
-              rows={4}
-              value={formData.projectDescription}
-              onChange={(e) => handleInputChange("projectDescription", e.target.value)}
-              required
-            />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Tender Info</span>
+            <span>Project Details</span>
+            <span>Submission</span>
+            <span>Evaluation</span>
+            <span>Administrative</span>
           </div>
+        </div>
 
-          {/* Select Request Items */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-1">
-              Select request items
-            </Label>
-            <div className="border rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {requestItems.map((item) => (
-                  <div key={item} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`item-${item}`}
-                      checked={formData.selectedItems.includes(item)}
-                      onChange={() => handleItemToggle(item)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <Label
-                      htmlFor={`item-${item}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {item}
-                    </Label>
+        <form onSubmit={handleSubmit} className="p-6">
+          {/* Step 1: Tender Information */}
+          {currentStep === 1 && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-6 text-blue-600">Tender Information</h3>
+                
+                <div className="space-y-6">
+                  {/* Tender Title */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="tenderTitle" className="text-sm font-medium">
+                        Tender Title <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">e.g., "Plumbing Maintenance – Block A, 2026"</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="tenderTitle"
+                        placeholder="Enter tender title"
+                        value={formData.tenderTitle}
+                        onChange={(e) => handleInputChange("tenderTitle", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
                   </div>
-                ))}
+
+                  {/* Tender Reference */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="tenderReference" className="text-sm font-medium">
+                        Tender Reference Number
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">System-generated or manually entered</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="tenderReference"
+                        placeholder="Enter reference number or leave blank for auto-generation"
+                        value={formData.tenderReference}
+                        onChange={(e) => handleInputChange("tenderReference", e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="category" className="text-sm font-medium">
+                        Category / Service Type <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Select the primary service category</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="category"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.category}
+                        onChange={(e) => handleInputChange("category", e.target.value)}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        {serviceCategories.map(category => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Tender Description */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="tenderDescription" className="text-sm font-medium">
+                        Tender Description / Scope of Work <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Clear details of requirements, scope, deliverables</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Textarea
+                        id="tenderDescription"
+                        placeholder="Provide detailed description of the tender requirements, scope of work, deliverables, and any specific requirements..."
+                        rows={8}
+                        value={formData.tenderDescription}
+                        onChange={(e) => handleInputChange("tenderDescription", e.target.value)}
+                        required
+                        className="w-full resize-vertical"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Supporting Documents */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="supportingDocuments" className="text-sm font-medium">
+                        Supporting Documents
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">BoQ, drawings, specifications, TOR, RFP docs</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <FileUp className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                        <p className="text-sm text-gray-600 mb-3">
+                          Drag and drop files here or click to browse
+                        </p>
+                        <Input
+                          id="supportingDocuments"
+                          type="file"
+                          multiple
+                          onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                          className="hidden"
+                        />
+                        <Label htmlFor="supportingDocuments">
+                          <Button variant="outline" type="button" asChild>
+                            <span>Choose Files</span>
+                          </Button>
+                        </Label>
+                      </div>
+                      
+                      {formData.supportingDocuments.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-sm font-medium">Selected Files:</p>
+                          {formData.supportingDocuments.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                              <div className="flex items-center space-x-3">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">{file.name}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFile(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
+          {/* Step 2: Project Details */}
+          {currentStep === 2 && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-6 text-blue-600">Project Details</h3>
+                
+                <div className="space-y-6">
+                  {/* Location */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="location" className="text-sm font-medium">
+                        Location / Residence Name <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">e.g., Morningside Student Village, Block C</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="location"
+                        placeholder="Enter project location"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Estimated Value */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="estimatedValue" className="text-sm font-medium">
+                        Estimated Project Value <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Budget range for the project</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="relative">
+                        <span className="absolute left-3 top-3 text-muted-foreground">R</span>
+                        <Input
+                          id="estimatedValue"
+                          placeholder="Enter budget estimate"
+                          className="pl-8 w-full"
+                          value={formData.estimatedValue}
+                          onChange={(e) => handleInputChange("estimatedValue", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contract Period */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="contractPeriod" className="text-sm font-medium">
+                        Duration / Contract Period
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">e.g., 12 months or start date - end date</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="contractPeriod"
+                        placeholder="e.g., 12 months"
+                        value={formData.contractPeriod}
+                        onChange={(e) => handleInputChange("contractPeriod", e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* CIDB Grading */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="cidbGrading" className="text-sm font-medium">
+                        CIDB Grading Requirement
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Required contractor grading level</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="cidbGrading"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.cidbGrading}
+                        onChange={(e) => handleInputChange("cidbGrading", e.target.value)}
+                      >
+                        <option value="">Select CIDB Grade</option>
+                        {cidbGrading.map(grade => (
+                          <option key={grade} value={grade}>{grade}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* B-BBEE Level */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="bbbeeLevel" className="text-sm font-medium">
+                        B-BBEE Level Requirement
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Minimum B-BBEE compliance level</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="bbbeeLevel"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.bbbeeLevel}
+                        onChange={(e) => handleInputChange("bbbeeLevel", e.target.value)}
+                      >
+                        <option value="">Select B-BBEE Level</option>
+                        {bbbeeLevels.map(level => (
+                          <option key={level} value={level}>{level}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Special Requirements */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                      <Label className="text-sm font-medium">
+                        Special Requirements
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Additional mandatory requirements</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="insuranceRequired"
+                            checked={formData.insuranceRequired}
+                            onChange={(e) => handleInputChange("insuranceRequired", e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <Label htmlFor="insuranceRequired" className="text-sm font-normal">
+                            Insurance Required
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="universityVendorReg"
+                            checked={formData.universityVendorReg}
+                            onChange={(e) => handleInputChange("universityVendorReg", e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <Label htmlFor="universityVendorReg" className="text-sm font-normal">
+                            University Vendor Registration Required
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Submission Information */}
+          {currentStep === 3 && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-6 text-blue-600">Submission Information</h3>
+                
+                <div className="space-y-6">
+                  {/* Opening Date */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="openingDate" className="text-sm font-medium">
+                        Tender Opening Date <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">When bidders can start submitting</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="openingDate"
+                        type="date"
+                        value={formData.openingDate}
+                        onChange={(e) => handleInputChange("openingDate", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Closing Date */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="closingDate" className="text-sm font-medium">
+                        Tender Closing Date <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Deadline for submissions</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="closingDate"
+                        type="date"
+                        value={formData.closingDate}
+                        onChange={(e) => handleInputChange("closingDate", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Closing Time */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="closingTime" className="text-sm font-medium">
+                        Closing Time <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Exact time for submission deadline</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="closingTime"
+                        type="time"
+                        value={formData.closingTime}
+                        onChange={(e) => handleInputChange("closingTime", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submission Method */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="submissionMethod" className="text-sm font-medium">
+                        Submission Method
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">How bidders should submit their proposals</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="submissionMethod"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.submissionMethod}
+                        onChange={(e) => handleInputChange("submissionMethod", e.target.value)}
+                      >
+                        <option value="online">Online Upload Only</option>
+                        <option value="email">Email Submission</option>
+                        <option value="physical">Physical Delivery</option>
+                        <option value="hybrid">Multiple Methods</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Contact Person */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="contactName" className="text-sm font-medium">
+                        Contact Person Name <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Primary contact for tender queries</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="contactName"
+                        placeholder="Full name"
+                        value={formData.contactName}
+                        onChange={(e) => handleInputChange("contactName", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Email */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="contactEmail" className="text-sm font-medium">
+                        Contact Email <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Email address for communications</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="contactEmail"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={formData.contactEmail}
+                        onChange={(e) => handleInputChange("contactEmail", e.target.value)}
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Phone */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="contactPhone" className="text-sm font-medium">
+                        Contact Phone
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Phone number for urgent queries</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="contactPhone"
+                        type="tel"
+                        placeholder="+27 12 345 6789"
+                        value={formData.contactPhone}
+                        onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clarification Deadline */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="clarificationDeadline" className="text-sm font-medium">
+                        Clarification Period Deadline
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Deadline for bidder questions</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Input
+                        id="clarificationDeadline"
+                        type="date"
+                        value={formData.clarificationDeadline}
+                        onChange={(e) => handleInputChange("clarificationDeadline", e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Evaluation & Compliance */}
+          {currentStep === 4 && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-6 text-blue-600">Evaluation & Compliance</h3>
+                
+                <div className="space-y-8">
+                  {/* Evaluation Criteria */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                      <Label className="text-sm font-medium">
+                        Evaluation Criteria <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Select criteria for tender evaluation</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-200 rounded-lg p-6">
+                        {evaluationCriteria.map((criterion) => (
+                          <div key={criterion} className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id={`eval-${criterion}`}
+                              checked={formData.evaluationCriteria.includes(criterion)}
+                              onChange={() => handleCheckboxToggle("evaluationCriteria", criterion)}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <Label htmlFor={`eval-${criterion}`} className="text-sm font-normal cursor-pointer">
+                              {criterion}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mandatory Documents */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                      <Label className="text-sm font-medium">
+                        Mandatory Documents Checklist <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Required documents from bidders</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-200 rounded-lg p-6">
+                        {mandatoryDocuments.map((document) => (
+                          <div key={document} className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id={`doc-${document}`}
+                              checked={formData.mandatoryDocuments.includes(document)}
+                              onChange={() => handleCheckboxToggle("mandatoryDocuments", document)}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <Label htmlFor={`doc-${document}`} className="text-sm font-normal cursor-pointer">
+                              {document}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compliance Acknowledgement */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label className="text-sm font-medium">
+                        Compliance Acknowledgement <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Terms and conditions acceptance</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-blue-50">
+                        <input
+                          type="checkbox"
+                          id="complianceAccepted"
+                          checked={formData.complianceAccepted}
+                          onChange={(e) => handleInputChange("complianceAccepted", e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          required
+                        />
+                        <Label htmlFor="complianceAccepted" className="text-sm font-normal">
+                          I acknowledge that tenderers must accept all rules and terms of this tender
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Administrative */}
+          {currentStep === 5 && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-6 text-blue-600">Administrative</h3>
+                
+                <div className="space-y-6">
+                  {/* Tender Status */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="tenderStatus" className="text-sm font-medium">
+                        Tender Status
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Current status of the tender</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="tenderStatus"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.tenderStatus}
+                        onChange={(e) => handleInputChange("tenderStatus", e.target.value)}
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                        <option value="closed">Closed</option>
+                        <option value="awarded">Awarded</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Tender Fee */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label htmlFor="tenderFee" className="text-sm font-medium">
+                        Tender Fees
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Participation fees if applicable</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <select
+                        id="tenderFee"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        value={formData.tenderFee}
+                        onChange={(e) => handleInputChange("tenderFee", e.target.value)}
+                      >
+                        <option value="">No Fee</option>
+                        <option value="fixed">Fixed Fee</option>
+                        <option value="variable">Variable Fee</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Fee Amount */}
+                  {formData.tenderFee && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                      <div className="lg:col-span-1">
+                        <Label htmlFor="feeAmount" className="text-sm font-medium">
+                          Fee Amount (ZAR)
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">e.g., R250 non-refundable</p>
+                      </div>
+                      <div className="lg:col-span-2">
+                        <div className="relative">
+                          <span className="absolute left-3 top-3 text-muted-foreground">R</span>
+                          <Input
+                            id="feeAmount"
+                            placeholder="Enter fee amount"
+                            className="pl-8 w-full"
+                            value={formData.feeAmount}
+                            onChange={(e) => handleInputChange("feeAmount", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confidentiality Clause */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div className="lg:col-span-1">
+                      <Label className="text-sm font-medium">
+                        Confidentiality Clause
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">Include confidentiality requirements</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                        <input
+                          type="checkbox"
+                          id="confidentiality"
+                          checked={formData.confidentiality}
+                          onChange={(e) => handleInputChange("confidentiality", e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <Label htmlFor="confidentiality" className="text-sm font-normal">
+                          Include Confidentiality Clause in tender documents
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-8 mt-8 border-t">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className="px-6"
+            >
+              Previous
             </Button>
-            <Button type="submit">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Service Request
-            </Button>
+            
+            {currentStep < 5 ? (
+              <Button type="button" onClick={nextStep} className="px-6">
+                Next Step
+              </Button>
+            ) : (
+              <Button type="submit" className="px-6">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Tender
+              </Button>
+            )}
           </div>
         </form>
       </div>
@@ -611,7 +1671,7 @@ function NotificationsSidebar() {
 }
 
 export function TenderProcurementDashboard() {
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, setActiveTab] = useState("dashboard")
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const [tenders, setTenders] = useState(initialTenders)
   const [submissions, setSubmissions] = useState([
@@ -703,15 +1763,16 @@ export function TenderProcurementDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="tenders">Tenders</TabsTrigger>
             <TabsTrigger value="submissions">Submissions</TabsTrigger>
             <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
             <TabsTrigger value="contracts">Contracts</TabsTrigger>
+            <TabsTrigger value="review">Review</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="dashboard" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Content - 2/3 width */}
               <div className="lg:col-span-2 space-y-6">
@@ -770,14 +1831,14 @@ export function TenderProcurementDashboard() {
 
                 {/* Action Button */}
                 <div className="flex justify-center">
-                  <Button 
+                  {/* <Button 
                     size="lg" 
                     onClick={() => setIsRegistrationOpen(true)}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Plus className="mr-2 h-5 w-5" />
                     Register New Tender
-                  </Button>
+                  </Button> */}
                 </div>
 
                 {/* Recent Activity */}
@@ -860,7 +1921,6 @@ export function TenderProcurementDashboard() {
             </div>
           </TabsContent>
 
-          {/* Other tabs remain the same */}
           <TabsContent value="tenders" className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1158,6 +2218,10 @@ export function TenderProcurementDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="review" className="space-y-6">
+            <TenderReviewComponent />
           </TabsContent>
         </Tabs>
       </main>

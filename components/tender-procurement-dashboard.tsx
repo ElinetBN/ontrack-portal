@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,9 +35,15 @@ import {
   Phone,
   Mail,
   FileUp,
+  Edit,
+  Trash2,
+  Eye,
+  ExternalLink,
+  Star,
+  BarChart3,
 } from "lucide-react"
 
-// Initial tenders data
+// Initial tenders data with advertisement links
 const initialTenders = [
   {
     id: "TND-2024-001",
@@ -50,7 +56,14 @@ const initialTenders = [
     category: "Technology",
     description: "Upgrade of entire IT infrastructure including servers, networking equipment, and workstations.",
     referenceNumber: "REF-IT-001",
-    requestedItems: ["Technical Specifications", "Financial Proposal", "Project Timeline"]
+    requestedItems: ["Technical Specifications", "Financial Proposal", "Project Timeline"],
+    advertisementLink: "https://example.gov.za/tenders/TND-2024-001",
+    evaluationScore: 85,
+    contactPerson: "John Smith",
+    contactEmail: "john.smith@company.com",
+    contactPhone: "+27 11 123 4567",
+    location: "Johannesburg, Gauteng",
+    createdDate: "2024-01-10"
   },
   {
     id: "TND-2024-002",
@@ -63,7 +76,14 @@ const initialTenders = [
     category: "Supplies",
     description: "Supply and installation of modern office furniture for the new headquarters building.",
     referenceNumber: "REF-FM-002",
-    requestedItems: ["Company Registration Documents", "Tax Compliance Certificate", "BEE Certificate"]
+    requestedItems: ["Company Registration Documents", "Tax Compliance Certificate", "BEE Certificate"],
+    advertisementLink: "https://example.gov.za/tenders/TND-2024-002",
+    evaluationScore: 92,
+    contactPerson: "Sarah Johnson",
+    contactEmail: "sarah.j@company.com",
+    contactPhone: "+27 11 234 5678",
+    location: "Cape Town, Western Cape",
+    createdDate: "2024-01-05"
   },
   {
     id: "TND-2024-003",
@@ -76,7 +96,14 @@ const initialTenders = [
     category: "Services",
     description: "24/7 security services for corporate headquarters and satellite offices.",
     referenceNumber: "REF-SEC-003",
-    requestedItems: ["Methodology Statement", "Health and Safety Policy", "Team CVs"]
+    requestedItems: ["Methodology Statement", "Health and Safety Policy", "Team CVs"],
+    advertisementLink: "https://example.gov.za/tenders/TND-2024-003",
+    evaluationScore: 78,
+    contactPerson: "Mike Brown",
+    contactEmail: "mike.brown@company.com",
+    contactPhone: "+27 11 345 6789",
+    location: "Durban, KwaZulu-Natal",
+    createdDate: "2024-01-02"
   },
 ]
 
@@ -222,23 +249,794 @@ const mandatoryDocuments = [
   "Quality Management System"
 ]
 
+// Tender Information Popup Component
+function TenderInfoPopup({ 
+  isOpen, 
+  onClose, 
+  tender 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  tender: any;
+}) {
+  if (!isOpen || !tender) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold">Tender Information</h2>
+            <p className="text-sm text-muted-foreground">Complete details for {tender.title}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Tender ID</Label>
+                  <p className="text-sm">{tender.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Reference Number</Label>
+                  <p className="text-sm">{tender.referenceNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Department</Label>
+                  <p className="text-sm">{tender.department}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Category</Label>
+                  <p className="text-sm">{tender.category}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Financial Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Budget</Label>
+                  <p className="text-sm font-semibold">{tender.budget}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Submissions Received</Label>
+                  <p className="text-sm">{tender.submissions}</p>
+                </div>
+                {tender.evaluationScore && (
+                  <div>
+                    <Label className="text-sm font-medium">Evaluation Score</Label>
+                    <p className="text-sm">{tender.evaluationScore}%</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <Label className="text-sm font-medium">Description</Label>
+            <p className="text-sm mt-1 p-3 bg-gray-50 rounded-md">{tender.description}</p>
+          </div>
+
+          {/* Timeline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Timeline</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <Label className="text-sm font-medium">Deadline</Label>
+                    <p className="text-sm">{tender.deadline}</p>
+                  </div>
+                </div>
+                {tender.createdDate && (
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">Created Date</Label>
+                      <p className="text-sm">{tender.createdDate}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+              <div className="space-y-3">
+                {tender.contactPerson && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">Contact Person</Label>
+                      <p className="text-sm">{tender.contactPerson}</p>
+                    </div>
+                  </div>
+                )}
+                {tender.contactEmail && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">Email</Label>
+                      <p className="text-sm">{tender.contactEmail}</p>
+                    </div>
+                  </div>
+                )}
+                {tender.contactPhone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">Phone</Label>
+                      <p className="text-sm">{tender.contactPhone}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Location */}
+          {tender.location && (
+            <div>
+              <Label className="text-sm font-medium">Location</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm">{tender.location}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Requested Items */}
+          <div>
+            <Label className="text-sm font-medium">Requested Documents/Items</Label>
+            <div className="mt-2 space-y-2">
+              {tender.requestedItems?.map((item: string, index: number) => (
+                <div key={index} className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <p className="text-sm">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Advertisement Link */}
+          {tender.advertisementLink && (
+            <div>
+              <Label className="text-sm font-medium">Advertisement Link</Label>
+              <div className="mt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.open(tender.advertisementLink, '_blank')}
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Tender Advertisement
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Status Badge */}
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-md">
+            <Label className="text-sm font-medium">Current Status:</Label>
+            <Badge
+              variant={
+                tender.status === "Open"
+                  ? "default"
+                  : tender.status === "Evaluation"
+                    ? "secondary"
+                    : tender.status === "Awarded"
+                      ? "outline"
+                      : "destructive"
+              }
+              className="text-sm"
+            >
+              {tender.status}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 p-6 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={() => window.open(tender.advertisementLink, '_blank')}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            View Full Advertisement
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Document Upload/Edit Modal Component
+function DocumentModal({ 
+  isOpen, 
+  onClose, 
+  document = null,
+  onSave 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  document?: any;
+  onSave: (document: any) => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: document?.name || "",
+    type: document?.type || "",
+    description: document?.description || "",
+    file: null as File | null,
+    version: document?.version || "1.0",
+    category: document?.category || "Technical",
+  })
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      setFormData(prev => ({
+        ...prev,
+        file: files[0],
+        name: files[0].name
+      }))
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const documentData = {
+      id: document?.id || `doc-${Date.now()}`,
+      ...formData,
+      uploadDate: document?.uploadDate || new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      size: formData.file?.size || document?.size || 0,
+      uploadedBy: document?.uploadedBy || "Current User"
+    }
+    onSave(documentData)
+    onClose()
+  }
+
+  const documentCategories = [
+    "Technical",
+    "Financial",
+    "Legal",
+    "Compliance",
+    "Administrative",
+    "Other"
+  ]
+
+  const documentTypes = [
+    "PDF",
+    "Word Document",
+    "Excel Spreadsheet",
+    "PowerPoint",
+    "Image",
+    "Other"
+  ]
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold">
+              {document ? "Edit Document" : "Upload New Document"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {document ? "Update document details" : "Add a new document to the submission"}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* File Upload */}
+          <div>
+            <Label htmlFor="documentFile" className="text-sm font-medium">
+              Document File {!document && <span className="text-red-500">*</span>}
+            </Label>
+            <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <FileUp className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-600 mb-3">
+                {document ? "Replace current file or keep existing" : "Drag and drop files here or click to browse"}
+              </p>
+              <Input
+                id="documentFile"
+                type="file"
+                onChange={(e) => handleFileChange(e.target.files)}
+                className="hidden"
+              />
+              <Label htmlFor="documentFile">
+                <Button variant="outline" type="button" asChild>
+                  <span>{document ? "Replace File" : "Choose File"}</span>
+                </Button>
+              </Label>
+              {formData.file && (
+                <p className="mt-3 text-sm text-green-600">
+                  Selected: {formData.file.name}
+                </p>
+              )}
+              {document && !formData.file && (
+                <p className="mt-3 text-sm text-gray-600">
+                  Current: {document.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Document Name */}
+          <div>
+            <Label htmlFor="documentName" className="text-sm font-medium">
+              Document Name <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="documentName"
+              value={formData.name}
+              onChange={(e) => handleInputChange("name", e.target.value)}
+              required
+              className="mt-1"
+              placeholder="Enter document name"
+            />
+          </div>
+
+          {/* Document Type and Category */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="documentType" className="text-sm font-medium">
+                Document Type
+              </Label>
+              <select
+                id="documentType"
+                className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                value={formData.type}
+                onChange={(e) => handleInputChange("type", e.target.value)}
+              >
+                <option value="">Select Type</option>
+                {documentTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="documentCategory" className="text-sm font-medium">
+                Category
+              </Label>
+              <select
+                id="documentCategory"
+                className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                value={formData.category}
+                onChange={(e) => handleInputChange("category", e.target.value)}
+              >
+                {documentCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Version */}
+          <div>
+            <Label htmlFor="documentVersion" className="text-sm font-medium">
+              Version
+            </Label>
+            <Input
+              id="documentVersion"
+              value={formData.version}
+              onChange={(e) => handleInputChange("version", e.target.value)}
+              className="mt-1"
+              placeholder="e.g., 1.0"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <Label htmlFor="documentDescription" className="text-sm font-medium">
+              Description
+            </Label>
+            <Textarea
+              id="documentDescription"
+              value={formData.description}
+              onChange={(e) => handleInputChange("description", e.target.value)}
+              className="mt-1 resize-vertical"
+              placeholder="Enter document description..."
+              rows={3}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {document ? "Update Document" : "Upload Document"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Document Management Section Component
+function DocumentManagementSection({ submission, onDocumentsUpdate }: { 
+  submission: any; 
+  onDocumentsUpdate: (submissionId: string, documents: any[]) => void;
+}) {
+  const [documents, setDocuments] = useState(submission.documents || [])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingDocument, setEditingDocument] = useState<any>(null)
+
+  const handleAddDocument = (newDocument: any) => {
+    const updatedDocuments = [...documents, newDocument]
+    setDocuments(updatedDocuments)
+    onDocumentsUpdate(submission.id, updatedDocuments)
+  }
+
+  const handleEditDocument = (updatedDocument: any) => {
+    const updatedDocuments = documents.map(doc => 
+      doc.id === updatedDocument.id ? updatedDocument : doc
+    )
+    setDocuments(updatedDocuments)
+    onDocumentsUpdate(submission.id, updatedDocuments)
+  }
+
+  const handleDeleteDocument = (documentId: string) => {
+    const updatedDocuments = documents.filter(doc => doc.id !== documentId)
+    setDocuments(updatedDocuments)
+    onDocumentsUpdate(submission.id, updatedDocuments)
+  }
+
+  const openEditModal = (document: any) => {
+    setEditingDocument(document)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingDocument(null)
+  }
+
+  const handleSaveDocument = (document: any) => {
+    if (editingDocument) {
+      handleEditDocument(document)
+    } else {
+      handleAddDocument(document)
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const getFileIcon = (fileName: string) => {
+    if (fileName.includes('.pdf')) return '📄'
+    if (fileName.includes('.doc') || fileName.includes('.docx')) return '📝'
+    if (fileName.includes('.xls') || fileName.includes('.xlsx')) return '📊'
+    if (fileName.includes('.ppt') || fileName.includes('.pptx')) return '📽️'
+    if (fileName.match(/\.(jpg|jpeg|png|gif)$/i)) return '🖼️'
+    return '📎'
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Documents</h3>
+        <Button onClick={() => setIsModalOpen(true)} className="hover:bg-blue-600 transition-colors">
+          <Upload className="mr-2 h-4 w-4" />
+          Upload Document
+        </Button>
+      </div>
+
+      {documents.length === 0 ? (
+        <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+          <FileUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500 mb-2">No documents uploaded yet</p>
+          <Button variant="outline" onClick={() => setIsModalOpen(true)} className="hover:bg-gray-100 transition-colors">
+            Upload First Document
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {documents.map((document: any) => (
+            <div key={document.id} className="flex items-center justify-between p-4 border rounded-lg bg-white">
+              <div className="flex items-center space-x-4 flex-1">
+                <div className="text-2xl">
+                  {getFileIcon(document.name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <p className="font-medium text-sm truncate">{document.name}</p>
+                    <Badge variant="outline" className="text-xs">
+                      v{document.version}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                    <span>{formatFileSize(document.size)}</span>
+                    <span>{document.category}</span>
+                    <span>Uploaded: {new Date(document.uploadDate).toLocaleDateString()}</span>
+                    {document.lastModified && (
+                      <span>Modified: {new Date(document.lastModified).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                  {document.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                      {document.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" className="bg-transparent hover:bg-gray-100 transition-colors">
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" className="bg-transparent hover:bg-gray-100 transition-colors">
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-transparent hover:bg-gray-100 transition-colors"
+                  onClick={() => openEditModal(document)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-transparent text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                  onClick={() => handleDeleteDocument(document.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <DocumentModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        document={editingDocument}
+        onSave={handleSaveDocument}
+      />
+    </div>
+  )
+}
+
+// Enhanced Submission Card Component
+function SubmissionCard({ 
+  submission, 
+  onDocumentsUpdate,
+  onReviewClick
+}: { 
+  submission: any; 
+  onDocumentsUpdate: (submissionId: string, documents: any[]) => void;
+  onReviewClick: (submission: any) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{submission.supplier}</CardTitle>
+              <Badge
+                variant={
+                  submission.status === "Under Review"
+                    ? "secondary"
+                    : submission.status === "Evaluated"
+                      ? "default"
+                      : "outline"
+                }
+              >
+                {submission.status}
+              </Badge>
+            </div>
+            <CardDescription>
+              Tender: {submission.tenderId} • Submitted: {submission.submittedDate}
+            </CardDescription>
+          </div>
+          {submission.score && (
+            <div className="text-right">
+              <p className="text-2xl font-bold">{submission.score}%</p>
+              <p className="text-sm text-muted-foreground">Evaluation Score</p>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {submission.score && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Evaluation Progress</span>
+                <span>{submission.score}%</span>
+              </div>
+              <Progress value={parseInt(submission.score)} className="h-2" />
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                {submission.documents?.length || 0} documents
+              </div>
+              <div className="flex items-center gap-1">
+                <Building2 className="h-4 w-4" />
+                {submission.supplier}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-transparent hover:bg-gray-100 transition-colors"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? "Hide" : "Manage"} Documents
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={() => onReviewClick(submission)}
+                className="hover:bg-blue-600 transition-colors"
+              >
+                Review
+              </Button>
+            </div>
+          </div>
+
+          {/* Expandable Document Management Section */}
+          {isExpanded && (
+            <div className="border-t pt-4 mt-4">
+              <DocumentManagementSection 
+                submission={submission}
+                onDocumentsUpdate={onDocumentsUpdate}
+              />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Evaluation Panel Component
+function EvaluationPanel({ 
+  submission, 
+  onEvaluationComplete 
+}: { 
+  submission: any; 
+  onEvaluationComplete: (submissionId: string, score: number, status: string) => void;
+}) {
+  const [score, setScore] = useState(submission.score || 0)
+  const [comments, setComments] = useState("")
+  const [status, setStatus] = useState(submission.status || "Under Review")
+
+  const handleSubmitEvaluation = () => {
+    onEvaluationComplete(submission.id, score, status)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Evaluation Panel - {submission.supplier}</CardTitle>
+        <CardDescription>Evaluate this submission and provide feedback</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="score" className="text-sm font-medium">
+              Evaluation Score: {score}%
+            </Label>
+            <Input
+              id="score"
+              type="range"
+              min="0"
+              max="100"
+              value={score}
+              onChange={(e) => setScore(parseInt(e.target.value))}
+              className="w-full mt-2"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="status" className="text-sm font-medium">
+              Status
+            </Label>
+            <select
+              id="status"
+              className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="Under Review">Under Review</option>
+              <option value="Evaluated">Evaluated</option>
+              <option value="Recommended">Recommended</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="comments" className="text-sm font-medium">
+              Evaluation Comments
+            </Label>
+            <Textarea
+              id="comments"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Provide detailed evaluation comments..."
+              rows={4}
+              className="mt-1"
+            />
+          </div>
+
+          <Button 
+            onClick={handleSubmitEvaluation}
+            className="w-full hover:bg-green-600 transition-colors"
+          >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Submit Evaluation
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // Tender Review Component
-function TenderReviewComponent() {
+function TenderReviewComponent({ tenders, onTenderStatusChange }: { tenders: any[], onTenderStatusChange: (tenderId: string, newStatus: string) => void }) {
   const [isApproved, setIsApproved] = useState(false)
   const [isRejected, setIsRejected] = useState(false)
   const [requestChanges, setRequestChanges] = useState(false)
   const [comment, setComment] = useState("")
+  const [selectedTender, setSelectedTender] = useState<any>(null)
+  const [showTenderInfo, setShowTenderInfo] = useState(false)
 
   const handleApprove = () => {
     setIsApproved(true)
     setIsRejected(false)
     setRequestChanges(false)
+    if (selectedTender) {
+      onTenderStatusChange(selectedTender.id, "Awarded")
+    }
   }
 
   const handleReject = () => {
     setIsRejected(true)
     setIsApproved(false)
     setRequestChanges(false)
+    if (selectedTender) {
+      onTenderStatusChange(selectedTender.id, "Rejected")
+    }
   }
 
   const handleRequestChanges = () => {
@@ -249,10 +1047,14 @@ function TenderReviewComponent() {
 
   const handleSubmitComment = () => {
     if (comment.trim()) {
-      // Here you would typically send the comment to your backend
       console.log("Comment submitted:", comment)
       setComment("")
     }
+  }
+
+  const handleReviewClick = (tender: any) => {
+    setSelectedTender(tender)
+    setShowTenderInfo(true)
   }
 
   return (
@@ -276,14 +1078,14 @@ function TenderReviewComponent() {
                 <CardTitle className="text-lg">Tender Navigation</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                   <Checkbox id="dashboard" />
                   <Label htmlFor="dashboard" className="font-medium cursor-pointer">
                     Dashboard
                   </Label>
                 </div>
                 
-                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                   <Checkbox id="tenders" />
                   <Label htmlFor="tenders" className="font-medium cursor-pointer">
                     Tenders
@@ -293,7 +1095,7 @@ function TenderReviewComponent() {
                   Supply of Office Furniture
                 </div>
                 
-                <div className="flex items-center space-x-3 p-3 border rounded-lg bg-blue-50">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer">
                   <Checkbox id="reviews" checked readOnly />
                   <Label htmlFor="reviews" className="font-medium cursor-pointer">
                     Reviews
@@ -306,12 +1108,59 @@ function TenderReviewComponent() {
                   <div className="text-muted-foreground">April 30, 2024</div>
                 </div>
                 
-                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                   <Checkbox id="settings" />
                   <Label htmlFor="settings" className="font-medium cursor-pointer">
                     Settings
                   </Label>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Tenders List for Review */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Tenders for Review</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {tenders.map((tender) => (
+                  <div 
+                    key={tender.id} 
+                    className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedTender?.id === tender.id ? 'bg-blue-50 border-blue-200' : ''
+                    }`}
+                    onClick={() => setSelectedTender(tender)}
+                  >
+                    <div className="font-medium text-sm">{tender.title}</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <Badge
+                        variant={
+                          tender.status === "Open"
+                            ? "default"
+                            : tender.status === "Evaluation"
+                              ? "secondary"
+                              : tender.status === "Awarded"
+                                ? "outline"
+                                : "destructive"
+                        }
+                        className="text-xs"
+                      >
+                        {tender.status}
+                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleReviewClick(tender)
+                        }}
+                        className="hover:bg-blue-100 transition-colors"
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
@@ -348,21 +1197,21 @@ function TenderReviewComponent() {
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold mb-4">Attachments</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox id="specification" />
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <Label htmlFor="specification" className="cursor-pointer">
                           Specification.pdf
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox id="terms" />
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <Label htmlFor="terms" className="cursor-pointer">
                           Terms.pdf
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox id="budget" />
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <Label htmlFor="budget" className="cursor-pointer">
@@ -376,13 +1225,13 @@ function TenderReviewComponent() {
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold mb-4">Status</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox id="in-review" />
                         <Label htmlFor="in-review" className="cursor-pointer">
                           In Review
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <Checkbox id="approved" />
                         <Label htmlFor="approved" className="cursor-pointer">
                           Approved
@@ -398,7 +1247,7 @@ function TenderReviewComponent() {
                       <Button
                         onClick={handleApprove}
                         variant={isApproved ? "default" : "outline"}
-                        className={isApproved ? "bg-green-600 hover:bg-green-700" : ""}
+                        className={`${isApproved ? "bg-green-600 hover:bg-green-700" : ""} transition-colors`}
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Approve
@@ -406,6 +1255,7 @@ function TenderReviewComponent() {
                       <Button
                         onClick={handleReject}
                         variant={isRejected ? "destructive" : "outline"}
+                        className="transition-colors"
                       >
                         <X className="mr-2 h-4 w-4" />
                         Reject
@@ -413,6 +1263,7 @@ function TenderReviewComponent() {
                       <Button
                         onClick={handleRequestChanges}
                         variant={requestChanges ? "secondary" : "outline"}
+                        className="transition-colors"
                       >
                         <AlertCircle className="mr-2 h-4 w-4" />
                         Request Changes
@@ -432,7 +1283,11 @@ function TenderReviewComponent() {
                           className="min-h-[100px]"
                         />
                       </div>
-                      <Button onClick={handleSubmitComment} disabled={!comment.trim()}>
+                      <Button 
+                        onClick={handleSubmitComment} 
+                        disabled={!comment.trim()}
+                        className="hover:bg-blue-600 transition-colors"
+                      >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Comment
                       </Button>
@@ -482,6 +1337,13 @@ function TenderReviewComponent() {
           </div>
         </div>
       </main>
+
+      {/* Tender Information Popup */}
+      <TenderInfoPopup
+        isOpen={showTenderInfo}
+        onClose={() => setShowTenderInfo(false)}
+        tender={selectedTender}
+      />
     </div>
   )
 }
@@ -620,7 +1482,8 @@ function TenderRegistrationPopup({
       contactEmail: formData.contactEmail,
       contactPhone: formData.contactPhone,
       submissionMethod: formData.submissionMethod,
-      tenderFee: formData.tenderFee ? `R ${formData.feeAmount}` : "No fee"
+      tenderFee: formData.tenderFee ? `R ${formData.feeAmount}` : "No fee",
+      advertisementLink: `https://example.gov.za/tenders/${formData.tenderReference || generateTenderId()}`
     }
 
     // Call the callback to add the new tender
@@ -719,7 +1582,7 @@ function TenderRegistrationPopup({
             <h2 className="text-xl font-bold">Create New Tender</h2>
             <p className="text-sm text-muted-foreground">Step {currentStep} of 5</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleClose}>
+          <Button variant="ghost" size="sm" onClick={handleClose} className="hover:bg-gray-100 transition-colors">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -730,7 +1593,7 @@ function TenderRegistrationPopup({
             {[1, 2, 3, 4, 5].map((step) => (
               <div
                 key={step}
-                className={`flex-1 h-2 mx-1 rounded-full ${
+                className={`flex-1 h-2 mx-1 rounded-full transition-colors ${
                   step <= currentStep ? 'bg-blue-600' : 'bg-gray-200'
                 }`}
               />
@@ -803,7 +1666,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="category"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.category}
                         onChange={(e) => handleInputChange("category", e.target.value)}
                         required
@@ -859,7 +1722,7 @@ function TenderRegistrationPopup({
                           className="hidden"
                         />
                         <Label htmlFor="supportingDocuments">
-                          <Button variant="outline" type="button" asChild>
+                          <Button variant="outline" type="button" asChild className="hover:bg-gray-100 transition-colors">
                             <span>Choose Files</span>
                           </Button>
                         </Label>
@@ -879,6 +1742,7 @@ function TenderRegistrationPopup({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeFile(index)}
+                                className="hover:bg-gray-200 transition-colors"
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -973,7 +1837,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="cidbGrading"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.cidbGrading}
                         onChange={(e) => handleInputChange("cidbGrading", e.target.value)}
                       >
@@ -996,7 +1860,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="bbbeeLevel"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.bbbeeLevel}
                         onChange={(e) => handleInputChange("bbbeeLevel", e.target.value)}
                       >
@@ -1128,7 +1992,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="submissionMethod"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.submissionMethod}
                         onChange={(e) => handleInputChange("submissionMethod", e.target.value)}
                       >
@@ -1334,7 +2198,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="tenderStatus"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.tenderStatus}
                         onChange={(e) => handleInputChange("tenderStatus", e.target.value)}
                       >
@@ -1357,7 +2221,7 @@ function TenderRegistrationPopup({
                     <div className="lg:col-span-2">
                       <select
                         id="tenderFee"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white"
+                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
                         value={formData.tenderFee}
                         onChange={(e) => handleInputChange("tenderFee", e.target.value)}
                       >
@@ -1427,17 +2291,17 @@ function TenderRegistrationPopup({
               variant="outline" 
               onClick={prevStep}
               disabled={currentStep === 1}
-              className="px-6"
+              className="px-6 hover:bg-gray-100 transition-colors"
             >
               Previous
             </Button>
             
             {currentStep < 5 ? (
-              <Button type="button" onClick={nextStep} className="px-6">
+              <Button type="button" onClick={nextStep} className="px-6 hover:bg-blue-600 transition-colors">
                 Next Step
               </Button>
             ) : (
-              <Button type="submit" className="px-6">
+              <Button type="submit" className="px-6 hover:bg-blue-600 transition-colors">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Tender
               </Button>
@@ -1516,7 +2380,7 @@ function CalendarSidebar() {
           {calendarEvents.map((event) => (
             <div 
               key={event.id}
-              className={`p-3 border rounded-lg border-l-4 ${getEventColor(event.type)} bg-white`}
+              className={`p-3 border rounded-lg border-l-4 ${getEventColor(event.type)} bg-white hover:bg-gray-50 transition-colors cursor-pointer`}
             >
               <div className="flex items-start gap-3">
                 {getEventIcon(event.type)}
@@ -1543,7 +2407,7 @@ function CalendarSidebar() {
           <p className="text-xs text-orange-700 mb-3">
             Open bid submission portal for list month submissions.
           </p>
-          <Button size="sm" className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+          <Button size="sm" className="w-full bg-orange-600 hover:bg-orange-700 text-white transition-colors">
             Open Portal
           </Button>
         </div>
@@ -1599,7 +2463,7 @@ function NotificationsSidebar() {
             )}
           </CardTitle>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+            <Button variant="ghost" size="sm" onClick={markAllAsRead} className="hover:bg-gray-100 transition-colors">
               Mark all read
             </Button>
           )}
@@ -1610,9 +2474,10 @@ function NotificationsSidebar() {
         {notificationsList.map((notification) => (
           <div
             key={notification.id}
-            className={`p-3 border rounded-lg ${
-              !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+              !notification.read ? 'bg-blue-50 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
+            onClick={() => !notification.read && markAsRead(notification.id)}
           >
             <div className="flex items-start gap-3">
               {getNotificationIcon(notification.type)}
@@ -1640,8 +2505,11 @@ function NotificationsSidebar() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => markAsRead(notification.id)}
+                      className="h-6 text-xs hover:bg-blue-200 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        markAsRead(notification.id)
+                      }}
                     >
                       Mark read
                     </Button>
@@ -1653,7 +2521,7 @@ function NotificationsSidebar() {
         ))}
 
         {/* System Alert Card */}
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <span className="text-sm font-medium text-red-800">System Alert</span>
@@ -1661,7 +2529,7 @@ function NotificationsSidebar() {
           <p className="text-xs text-red-700 mb-3">
             System failed to auto-update 34 bidder accounts. Click here to review CSD connection details.
           </p>
-          <Button size="sm" variant="outline" className="w-full border-red-300 text-red-700 hover:bg-red-100">
+          <Button size="sm" variant="outline" className="w-full border-red-300 text-red-700 hover:bg-red-200 transition-colors">
             Review CSD Details
           </Button>
         </div>
@@ -1682,7 +2550,32 @@ export function TenderProcurementDashboard() {
       submittedDate: "2024-01-25",
       status: "Under Review",
       score: "85",
-      documents: 5,
+      documents: [
+        {
+          id: "doc-1",
+          name: "Technical Proposal.pdf",
+          type: "PDF",
+          category: "Technical",
+          description: "Detailed technical proposal outlining the solution approach",
+          version: "1.0",
+          uploadDate: "2024-01-25T10:30:00Z",
+          lastModified: "2024-01-25T10:30:00Z",
+          size: 2457600,
+          uploadedBy: "TechCorp Solutions"
+        },
+        {
+          id: "doc-2",
+          name: "Financial Bid.xlsx",
+          type: "Excel Spreadsheet",
+          category: "Financial",
+          description: "Complete financial breakdown and pricing",
+          version: "1.0",
+          uploadDate: "2024-01-25T10:32:00Z",
+          lastModified: "2024-01-25T10:32:00Z",
+          size: 512000,
+          uploadedBy: "TechCorp Solutions"
+        }
+      ],
     },
     {
       id: "SUB-002",
@@ -1691,7 +2584,20 @@ export function TenderProcurementDashboard() {
       submittedDate: "2024-01-24",
       status: "Evaluated",
       score: "92",
-      documents: 6,
+      documents: [
+        {
+          id: "doc-3",
+          name: "Company Profile.pdf",
+          type: "PDF",
+          category: "Administrative",
+          description: "Company overview and credentials",
+          version: "1.0",
+          uploadDate: "2024-01-24T14:20:00Z",
+          lastModified: "2024-01-24T14:20:00Z",
+          size: 1536000,
+          uploadedBy: "Digital Dynamics"
+        }
+      ],
     },
     {
       id: "SUB-003",
@@ -1700,10 +2606,12 @@ export function TenderProcurementDashboard() {
       submittedDate: "2024-01-28",
       status: "Compliant",
       score: "78",
-      documents: 4,
+      documents: [],
     },
   ])
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedTenderInfo, setSelectedTenderInfo] = useState<any>(null)
+  const [showTenderInfo, setShowTenderInfo] = useState(false)
 
   const handleTenderCreate = (newTender: any) => {
     setTenders(prev => [newTender, ...prev])
@@ -1716,10 +2624,48 @@ export function TenderProcurementDashboard() {
       submittedDate: new Date().toISOString().split('T')[0],
       status: "Under Review",
       score: (Math.floor(Math.random() * 20) + 70).toString(),
-      documents: Math.floor(Math.random() * 5) + 2,
+      documents: [],
     }))
     
     setSubmissions(prev => [...newSubmissions, ...prev])
+  }
+
+  const handleDocumentsUpdate = (submissionId: string, updatedDocuments: any[]) => {
+    setSubmissions(prev =>
+      prev.map(submission =>
+        submission.id === submissionId
+          ? { ...submission, documents: updatedDocuments }
+          : submission
+      )
+    )
+  }
+
+  const handleEvaluationComplete = (submissionId: string, score: number, status: string) => {
+    setSubmissions(prev =>
+      prev.map(submission =>
+        submission.id === submissionId
+          ? { ...submission, score: score.toString(), status }
+          : submission
+      )
+    )
+  }
+
+  const handleTenderStatusChange = (tenderId: string, newStatus: string) => {
+    setTenders(prev =>
+      prev.map(tender =>
+        tender.id === tenderId
+          ? { ...tender, status: newStatus }
+          : tender
+      )
+    )
+  }
+
+  const handleReviewClick = (submission: any) => {
+    const tender = tenders.find(t => t.id === submission.tenderId)
+    if (tender) {
+      setSelectedTenderInfo(tender)
+      setShowTenderInfo(true)
+    }
   }
 
   // Calculate dynamic statistics
@@ -1764,12 +2710,12 @@ export function TenderProcurementDashboard() {
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="tenders">Tenders</TabsTrigger>
-            <TabsTrigger value="submissions">Submissions</TabsTrigger>
-            <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-            <TabsTrigger value="contracts">Contracts</TabsTrigger>
-            <TabsTrigger value="review">Review</TabsTrigger>
+            <TabsTrigger value="dashboard" className="hover:bg-gray-100 transition-colors">Dashboard</TabsTrigger>
+            <TabsTrigger value="tenders" className="hover:bg-gray-100 transition-colors">Tenders</TabsTrigger>
+            <TabsTrigger value="submissions" className="hover:bg-gray-100 transition-colors">Submissions</TabsTrigger>
+            <TabsTrigger value="evaluation" className="hover:bg-gray-100 transition-colors">Evaluation</TabsTrigger>
+            <TabsTrigger value="contracts" className="hover:bg-gray-100 transition-colors">Contracts</TabsTrigger>
+            <TabsTrigger value="review" className="hover:bg-gray-100 transition-colors">Review</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
@@ -1834,7 +2780,7 @@ export function TenderProcurementDashboard() {
                   {/* <Button 
                     size="lg" 
                     onClick={() => setIsRegistrationOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 transition-colors"
                   >
                     <Plus className="mr-2 h-5 w-5" />
                     Register New Tender
@@ -1850,7 +2796,14 @@ export function TenderProcurementDashboard() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {recentTenders.map((tender) => (
-                        <div key={tender.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div 
+                          key={tender.id} 
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedTenderInfo(tender)
+                            setShowTenderInfo(true)
+                          }}
+                        >
                           <div className="space-y-1">
                             <p className="font-medium text-sm">{tender.title}</p>
                             <p className="text-xs text-muted-foreground">{tender.department}</p>
@@ -1870,7 +2823,7 @@ export function TenderProcurementDashboard() {
                               <span className="text-xs text-muted-foreground">{tender.budget}</span>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" className="bg-transparent">
+                          <Button variant="outline" size="sm" className="bg-transparent hover:bg-gray-100 transition-colors">
                             View
                           </Button>
                         </div>
@@ -1885,7 +2838,7 @@ export function TenderProcurementDashboard() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {evaluationQueueSubmissions.map((submission) => (
-                        <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                           <div className="space-y-1">
                             <p className="font-medium text-sm">{submission.supplier}</p>
                             <p className="text-xs text-muted-foreground">Tender: {submission.tenderId}</p>
@@ -1898,7 +2851,12 @@ export function TenderProcurementDashboard() {
                               )}
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" className="bg-transparent">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-transparent hover:bg-gray-100 transition-colors"
+                            onClick={() => handleReviewClick(submission)}
+                          >
                             Evaluate
                           </Button>
                         </div>
@@ -1929,7 +2887,7 @@ export function TenderProcurementDashboard() {
                   Manage {tenders.length} tender{tenders.length !== 1 ? 's' : ''} and opportunities
                 </p>
               </div>
-              <Button onClick={() => setIsRegistrationOpen(true)}>
+              <Button onClick={() => setIsRegistrationOpen(true)} className="hover:bg-blue-600 transition-colors">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Tender
               </Button>
@@ -1946,7 +2904,7 @@ export function TenderProcurementDashboard() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button variant="outline" className="bg-transparent">
+              <Button variant="outline" className="bg-transparent hover:bg-gray-100 transition-colors">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -1955,7 +2913,7 @@ export function TenderProcurementDashboard() {
             {/* Tenders List */}
             <div className="space-y-4">
               {filteredTenders.map((tender) => (
-                <Card key={tender.id}>
+                <Card key={tender.id} className="hover:shadow-md transition-shadow cursor-pointer">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
@@ -1967,7 +2925,9 @@ export function TenderProcurementDashboard() {
                                 ? "default"
                                 : tender.status === "Evaluation"
                                   ? "secondary"
-                                  : "outline"
+                                  : tender.status === "Awarded"
+                                    ? "outline"
+                                    : "destructive"
                             }
                           >
                             {tender.status}
@@ -1995,13 +2955,40 @@ export function TenderProcurementDashboard() {
                           <Users className="h-4 w-4" />
                           {tender.submissions} submissions
                         </div>
+                        {tender.advertisementLink && (
+                          <div className="flex items-center gap-1">
+                            <ExternalLink className="h-4 w-4" />
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="p-0 h-auto text-muted-foreground hover:text-blue-600 transition-colors"
+                              onClick={() => window.open(tender.advertisementLink, '_blank')}
+                            >
+                              View Advertisement
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="bg-transparent">
-                          <Download className="mr-2 h-4 w-4" />
-                          Download
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-transparent hover:bg-gray-100 transition-colors"
+                          onClick={() => window.open(tender.advertisementLink, '_blank')}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Advertisement
                         </Button>
-                        <Button size="sm">View Details</Button>
+                        <Button 
+                          size="sm" 
+                          className="hover:bg-blue-600 transition-colors"
+                          onClick={() => {
+                            setSelectedTenderInfo(tender)
+                            setShowTenderInfo(true)
+                          }}
+                        >
+                          View Details
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -2027,69 +3014,12 @@ export function TenderProcurementDashboard() {
 
             <div className="space-y-4">
               {submissions.map((submission) => (
-                <Card key={submission.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">{submission.supplier}</CardTitle>
-                          <Badge
-                            variant={
-                              submission.status === "Under Review"
-                                ? "secondary"
-                                : submission.status === "Evaluated"
-                                  ? "default"
-                                  : "outline"
-                            }
-                          >
-                            {submission.status}
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Tender: {submission.tenderId} • Submitted: {submission.submittedDate}
-                        </CardDescription>
-                      </div>
-                      {submission.score && (
-                        <div className="text-right">
-                          <p className="text-2xl font-bold">{submission.score}%</p>
-                          <p className="text-sm text-muted-foreground">Evaluation Score</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {submission.score && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Evaluation Progress</span>
-                            <span>{submission.score}%</span>
-                          </div>
-                          <Progress value={parseInt(submission.score)} className="h-2" />
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <FileText className="h-4 w-4" />
-                            {submission.documents} documents
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Building2 className="h-4 w-4" />
-                            {submission.supplier}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="bg-transparent">
-                            <Download className="mr-2 h-4 w-4" />
-                            Documents
-                          </Button>
-                          <Button size="sm">Review</Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <SubmissionCard 
+                  key={submission.id} 
+                  submission={submission}
+                  onDocumentsUpdate={handleDocumentsUpdate}
+                  onReviewClick={handleReviewClick}
+                />
               ))}
             </div>
           </TabsContent>
@@ -2102,29 +3032,59 @@ export function TenderProcurementDashboard() {
               </p>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Evaluation Criteria Setup</CardTitle>
-                <CardDescription>Configure evaluation parameters for tender assessments</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="technical-weight">Technical Score Weight (%)</Label>
-                    <Input id="technical-weight" type="number" placeholder="60" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="financial-weight">Financial Score Weight (%)</Label>
-                    <Input id="financial-weight" type="number" placeholder="40" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="evaluation-notes">Evaluation Notes</Label>
-                  <Textarea id="evaluation-notes" placeholder="Additional evaluation criteria and notes..." />
-                </div>
-                <Button>Save Criteria</Button>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Evaluation Criteria Setup */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Evaluation Criteria Setup</CardTitle>
+                    <CardDescription>Configure evaluation parameters for tender assessments</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="technical-weight">Technical Score Weight (%)</Label>
+                        <Input id="technical-weight" type="number" placeholder="60" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="financial-weight">Financial Score Weight (%)</Label>
+                        <Input id="financial-weight" type="number" placeholder="40" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="evaluation-notes">Evaluation Notes</Label>
+                      <Textarea id="evaluation-notes" placeholder="Additional evaluation criteria and notes..." />
+                    </div>
+                    <Button className="hover:bg-blue-600 transition-colors">Save Criteria</Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Evaluation Panel */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Evaluation</CardTitle>
+                    <CardDescription>Evaluate submissions quickly</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {submissions.filter(sub => sub.status === "Under Review").slice(0, 2).map((submission) => (
+                      <div key={submission.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <p className="font-medium text-sm">{submission.supplier}</p>
+                        <p className="text-xs text-muted-foreground">{submission.tenderId}</p>
+                        <Button 
+                          size="sm" 
+                          className="w-full mt-2 hover:bg-blue-600 transition-colors"
+                          onClick={() => handleReviewClick(submission)}
+                        >
+                          Evaluate Now
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
@@ -2135,7 +3095,7 @@ export function TenderProcurementDashboard() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {submissions.filter(sub => sub.score && parseInt(sub.score) > 80).slice(0, 2).map((submission) => (
-                      <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div>
                           <p className="font-medium">{submission.supplier}</p>
                           <p className="text-sm text-muted-foreground">Technical compliance: {submission.score}%</p>
@@ -2158,12 +3118,17 @@ export function TenderProcurementDashboard() {
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {submissions.filter(sub => sub.status === "Under Review").slice(0, 3).map((submission) => (
-                      <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div>
                           <p className="font-medium">{submission.supplier}</p>
                           <p className="text-sm text-muted-foreground">Pending {submission.tenderId.includes('IT') ? 'technical' : 'financial'} review</p>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-transparent">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-transparent hover:bg-gray-100 transition-colors"
+                          onClick={() => handleReviewClick(submission)}
+                        >
                           Review
                         </Button>
                       </div>
@@ -2171,6 +3136,17 @@ export function TenderProcurementDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Evaluation Panels for each submission */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {submissions.slice(0, 2).map((submission) => (
+                <EvaluationPanel
+                  key={submission.id}
+                  submission={submission}
+                  onEvaluationComplete={handleEvaluationComplete}
+                />
+              ))}
             </div>
           </TabsContent>
 
@@ -2190,7 +3166,7 @@ export function TenderProcurementDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {tenders.filter(tender => tender.status === "Awarded").map((tender) => (
-                    <div key={tender.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={tender.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                       <div className="space-y-1">
                         <p className="font-medium">{tender.title}</p>
                         <p className="text-sm text-muted-foreground">
@@ -2202,11 +3178,25 @@ export function TenderProcurementDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="bg-transparent">
-                          <Download className="mr-2 h-4 w-4" />
-                          Contract
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-transparent hover:bg-gray-100 transition-colors"
+                          onClick={() => window.open(tender.advertisementLink, '_blank')}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Advertisement
                         </Button>
-                        <Button size="sm">Manage</Button>
+                        <Button 
+                          size="sm" 
+                          className="hover:bg-blue-600 transition-colors"
+                          onClick={() => {
+                            setSelectedTenderInfo(tender)
+                            setShowTenderInfo(true)
+                          }}
+                        >
+                          Manage
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -2221,7 +3211,10 @@ export function TenderProcurementDashboard() {
           </TabsContent>
 
           <TabsContent value="review" className="space-y-6">
-            <TenderReviewComponent />
+            <TenderReviewComponent 
+              tenders={tenders} 
+              onTenderStatusChange={handleTenderStatusChange}
+            />
           </TabsContent>
         </Tabs>
       </main>
@@ -2231,6 +3224,13 @@ export function TenderProcurementDashboard() {
         isOpen={isRegistrationOpen} 
         onClose={() => setIsRegistrationOpen(false)}
         onTenderCreate={handleTenderCreate}
+      />
+
+      {/* Tender Information Popup */}
+      <TenderInfoPopup
+        isOpen={showTenderInfo}
+        onClose={() => setShowTenderInfo(false)}
+        tender={selectedTenderInfo}
       />
     </div>
   )

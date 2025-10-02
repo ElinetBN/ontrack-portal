@@ -28,15 +28,23 @@ export interface Tender {
     id: string
     tenderId: string
     supplier: string
-    submittedDate: string
+    tenderTitle: string
+    companyName: string
+    submissionDate: string
+    lastUpdated: string
     status: string
+    bidAmount: string
+    documents?: Document[]
+    notes?: string
+    submittedDate: string
     score?: string
-    documents: Document[]
+    
   }
   
   export interface Document {
     id: string
     name: string
+    url: string
     type: string
     category: string
     description: string
@@ -64,3 +72,9 @@ export interface Tender {
     urgent: boolean
     read: boolean
   }
+
+
+
+ 
+  
+  

@@ -1,0 +1,1 @@
+export { TenderProcurementDashboard } from "@/components/tender-procurement-dashboard"

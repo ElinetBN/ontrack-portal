@@ -47,8 +47,8 @@ const quickStats = [
     change: "+3",
     description: "From last month",
     icon: FileText,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50"
+    color: "text-primary",
+    bgColor: "bg-primary/10"
   },
   {
     title: "Total Submissions",
@@ -57,7 +57,7 @@ const quickStats = [
     description: "This quarter",
     icon: Users,
     color: "text-green-600",
-    bgColor: "bg-green-50"
+    bgColor: "bg-green-100"
   },
   {
     title: "Pending Evaluation",
@@ -66,7 +66,7 @@ const quickStats = [
     description: "Awaiting review",
     icon: Clock,
     color: "text-orange-600",
-    bgColor: "bg-orange-50"
+    bgColor: "bg-orange-100"
   },
   {
     title: "Total Value",
@@ -75,7 +75,7 @@ const quickStats = [
     description: "Active contracts",
     icon: DollarSign,
     color: "text-purple-600",
-    bgColor: "bg-purple-50"
+    bgColor: "bg-purple-100"
   }
 ]
 
@@ -189,7 +189,8 @@ export function TenderProcurementPortal() {
 
   const handleStartTenderRegistration = () => {
     setShowTenderRegistration(true)
-    setActiveTab("tenders")
+    //setActiveTab("tenders")
+    window.location.href = "/portals/tender-procurement/dashboard"
   }
 
   const getStatusBadge = (status: string) => {
@@ -226,34 +227,34 @@ export function TenderProcurementPortal() {
       return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Register New Tender Card */}
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+          <Card className="bg-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
             <CardContent className="p-6">
               <div className="flex items-start space-x-4">
-                <div className="bg-blue-500 p-3 rounded-lg">
+                <div className="bg-green-500 p-3 rounded-lg">
                   <FileUp className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-blue-900 mb-2">Register New Tender</h3>
-                  <p className="text-blue-700 mb-4">
+                  <h3 className="text-xl font-bold text-green-900 mb-2">Register New Tender</h3>
+                  <p className="text-green-700 mb-4">
                     Create and publish new tender opportunities. Define requirements, evaluation criteria, and manage the entire tender lifecycle.
                   </p>
                   <div className="space-y-3 mb-4">
-                    <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="flex items-center space-x-2 text-sm text-green-600">
                       <CheckCircle className="h-4 w-4" />
                       <span>Define tender specifications</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="flex items-center space-x-2 text-sm text-green-600">
                       <CheckCircle className="h-4 w-4" />
                       <span>Set evaluation criteria</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="flex items-center space-x-2 text-sm text-green-600">
                       <CheckCircle className="h-4 w-4" />
                       <span>Publish to suppliers</span>
                     </div>
                   </div>
                   <Button 
                     onClick={handleStartTenderRegistration}
-                    className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                    className="bg-green-600 hover:bg-green-700 text-white w-full"
                   >
                     <Plus className="mr-2 h-5 w-5" />
                     Start Tender Registration
@@ -264,34 +265,34 @@ export function TenderProcurementPortal() {
           </Card>
 
           {/* View Submissions Card */}
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+          <Card className="bg-primary/10 border-primary/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
             <CardContent className="p-6">
               <div className="flex items-start space-x-4">
-                <div className="bg-green-500 p-3 rounded-lg">
+                <div className="bg-primary p-3 rounded-lg">
                   <Eye className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-green-900 mb-2">View & Evaluate Submissions</h3>
-                  <p className="text-green-700 mb-4">
+                  <h3 className="text-xl font-bold text-primary mb-2">View & Evaluate Submissions</h3>
+                  <p className="text-primary/80 mb-4">
                     Review, evaluate, and manage all tender submissions. Access comprehensive evaluation tools and scoring systems.
                   </p>
                   <div className="space-y-3 mb-4">
-                    <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <div className="flex items-center space-x-2 text-sm text-primary">
                       <CheckCircle className="h-4 w-4" />
                       <span>Review submitted documents</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <div className="flex items-center space-x-2 text-sm text-primary">
                       <CheckCircle className="h-4 w-4" />
                       <span>Automated scoring system</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <div className="flex items-center space-x-2 text-sm text-primary">
                       <CheckCircle className="h-4 w-4" />
                       <span>Comparative analysis</span>
                     </div>
                   </div>
                   <Button 
                     onClick={handleNavigateToSubmissions}
-                    className="bg-green-600 hover:bg-green-700 text-white w-full"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
                   >
                     <BarChart className="mr-2 h-5 w-5" />
                     View All Submissions
@@ -308,32 +309,32 @@ export function TenderProcurementPortal() {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Available Tenders Card */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+        <Card className="bg-primary/10 border-primary/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
-              <div className="bg-purple-500 p-3 rounded-lg">
+              <div className="bg-primary p-3 rounded-lg">
                 <FileText className="h-8 w-8 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-purple-900 mb-2">Available Tenders</h3>
-                <p className="text-purple-700 mb-4">
+                <h3 className="text-xl font-bold text-primary mb-2">Available Tenders</h3>
+                <p className="text-primary/80 mb-4">
                   Browse and apply for open tender opportunities. View requirements and submit your proposals.
                 </p>
                 <div className="space-y-3 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-purple-600">
+                  <div className="flex items-center space-x-2 text-sm text-primary">
                     <CheckCircle className="h-4 w-4" />
                     <span>View open tenders</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-purple-600">
+                  <div className="flex items-center space-x-2 text-sm text-primary">
                     <CheckCircle className="h-4 w-4" />
                     <span>Download tender documents</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-purple-600">
+                  <div className="flex items-center space-x-2 text-sm text-primary">
                     <CheckCircle className="h-4 w-4" />
                     <span>Submit your proposal</span>
                   </div>
                 </div>
-                <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full">
                   <Eye className="mr-2 h-5 w-5" />
                   Browse Tenders
                 </Button>
@@ -343,32 +344,32 @@ export function TenderProcurementPortal() {
         </Card>
 
         {/* My Submissions Card */}
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+        <Card className="bg-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
-              <div className="bg-orange-500 p-3 rounded-lg">
+              <div className="bg-green-500 p-3 rounded-lg">
                 <Upload className="h-8 w-8 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-orange-900 mb-2">My Submissions</h3>
-                <p className="text-orange-700 mb-4">
+                <h3 className="text-xl font-bold text-green-900 mb-2">My Submissions</h3>
+                <p className="text-green-700 mb-4">
                   Track your submitted tender applications and view evaluation status and feedback.
                 </p>
                 <div className="space-y-3 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-orange-600">
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
                     <CheckCircle className="h-4 w-4" />
                     <span>Track submission status</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-orange-600">
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
                     <CheckCircle className="h-4 w-4" />
                     <span>View evaluation results</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-orange-600">
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
                     <CheckCircle className="h-4 w-4" />
                     <span>Download submission documents</span>
                   </div>
                 </div>
-                <Button className="bg-orange-600 hover:bg-orange-700 text-white w-full">
+                <Button className="bg-green-600 hover:bg-green-700 text-white w-full">
                   <BarChart className="mr-2 h-5 w-5" />
                   View My Submissions
                 </Button>
@@ -387,8 +388,8 @@ export function TenderProcurementPortal() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-500 p-2 rounded-lg">
-                <FileText className="h-6 w-6 text-white" />
+              <div className="bg-primary p-2 rounded-lg">
+                <FileText className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-foreground">Tender & Procurement Portal</h1>
@@ -458,10 +459,10 @@ export function TenderProcurementPortal() {
 
           {/* Tender Registration Progress (Only for officers when active) */}
           {userRole === "procurement-officer" && showTenderRegistration && (
-            <Card className="mb-8 border-l-4 border-l-blue-500">
+            <Card className="mb-8 border-l-4 border-l-green-500 bg-green-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileUp className="h-5 w-5 text-blue-600" />
+                  <FileUp className="h-5 w-5 text-green-600" />
                   Tender Registration in Progress
                 </CardTitle>
                 <CardDescription>
@@ -471,9 +472,9 @@ export function TenderProcurementPortal() {
               <CardContent>
                 <div className="space-y-4">
                   {registrationSteps.map((step) => (
-                    <div key={step.step} className="flex items-center space-x-4 p-3 border rounded-lg">
+                    <div key={step.step} className="flex items-center space-x-4 p-3 border rounded-lg bg-white">
                       <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        step.completed ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                        step.completed ? 'bg-green-100 text-green-600' : 'bg-primary/10 text-primary'
                       }`}>
                         {step.completed ? (
                           <CheckCircle className="h-4 w-4" />
@@ -520,7 +521,7 @@ export function TenderProcurementPortal() {
                     {recentActivities.map((activity) => (
                       <div key={activity.id} className="flex items-start space-x-4 p-3 border rounded-lg">
                         <div className="flex-shrink-0">
-                          {activity.type === 'tender' && <FileText className="h-5 w-5 text-blue-600" />}
+                          {activity.type === 'tender' && <FileText className="h-5 w-5 text-primary" />}
                           {activity.type === 'submission' && <Upload className="h-5 w-5 text-green-600" />}
                           {activity.type === 'evaluation' && <CheckCircle className="h-5 w-5 text-orange-600" />}
                           {activity.type === 'contract' && <Building2 className="h-5 w-5 text-purple-600" />}
@@ -590,7 +591,7 @@ export function TenderProcurementPortal() {
                   </p>
                 </div>
                 {userRole === "procurement-officer" && (
-                  <Button onClick={handleStartTenderRegistration}>
+                  <Button onClick={handleStartTenderRegistration} className="bg-green-600 hover:bg-green-700">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Tender
                   </Button>
@@ -689,8 +690,8 @@ export function TenderProcurementPortal() {
                     {[1, 2, 3, 4].map((item) => (
                       <div key={item} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center space-x-4">
-                          <div className="bg-blue-50 p-2 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600" />
+                          <div className="bg-primary/10 p-2 rounded-lg">
+                            <FileText className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium">
@@ -713,7 +714,7 @@ export function TenderProcurementPortal() {
                             <Download className="h-4 w-4" />
                           </Button>
                           {userRole === "procurement-officer" ? (
-                            <Button size="sm">Evaluate</Button>
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700">Evaluate</Button>
                           ) : (
                             <Button size="sm">Track</Button>
                           )}
@@ -732,7 +733,7 @@ export function TenderProcurementPortal() {
                   <h3 className="text-xl font-bold">Reports & Analytics</h3>
                   <p className="text-muted-foreground">Generate insights and performance reports</p>
                 </div>
-                <Button>
+                <Button className="bg-green-600 hover:bg-green-700">
                   <PieChart className="mr-2 h-4 w-4" />
                   Generate Report
                 </Button>
@@ -743,7 +744,7 @@ export function TenderProcurementPortal() {
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-blue-600" />
+                      <BarChart3 className="h-5 w-5 text-primary" />
                       Tender Performance
                     </CardTitle>
                     <CardDescription>
@@ -796,16 +797,16 @@ export function TenderProcurementPortal() {
 
           {/* Call to Action */}
           {userRole === "procurement-officer" && (
-            <Card className="mt-8 bg-blue-50 border-blue-200">
+            <Card className="mt-8 bg-green-50 border-green-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-blue-900">Ready for detailed management?</h3>
-                    <p className="text-blue-700">
+                    <h3 className="text-lg font-semibold text-green-900">Ready for detailed management?</h3>
+                    <p className="text-green-700">
                       Access the full tender procurement dashboard with advanced features and comprehensive tools.
                     </p>
                   </div>
-                  <Button onClick={handleNavigateToDashboard} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={handleNavigateToDashboard} className="bg-green-600 hover:bg-green-700">
                     Go to Full Dashboard
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>

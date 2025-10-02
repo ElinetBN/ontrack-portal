@@ -28,7 +28,7 @@ const portals = [
     color: "bg-blue-500",
     features: ["E-submission", "Automated Scoring", "Document Management", "Notifications"],
     // notifications: 5,
-    href: "/portals/tender-procurement",
+    href: "/portals/procument-portal",
   },
   {
     id: "supplier-management",

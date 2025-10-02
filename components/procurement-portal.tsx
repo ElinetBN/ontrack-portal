@@ -180,7 +180,7 @@ export function TenderProcurementPortal() {
   const [showTenderRegistration, setShowTenderRegistration] = useState(false)
 
   const handleNavigateToDashboard = () => {
-    window.location.href = "/portals/tender-procurement/dashboard"
+    window.location.href = "/portals/tender-procurement"
   }
 
   const handleNavigateToSubmissions = () => {
@@ -190,7 +190,7 @@ export function TenderProcurementPortal() {
   const handleStartTenderRegistration = () => {
     setShowTenderRegistration(true)
     //setActiveTab("tenders")
-    window.location.href = "/portals/tender-procurement/dashboard"
+    window.location.href = "/portals/tender-procurement"
   }
 
   const getStatusBadge = (status: string) => {

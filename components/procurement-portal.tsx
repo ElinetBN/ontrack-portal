@@ -796,7 +796,7 @@ export function TenderProcurementPortal() {
           </Tabs>
 
           {/* Call to Action */}
-          {userRole === "procurement-officer" && (
+          {/* {userRole === "procurement-officer" && (
             <Card className="mt-8 bg-green-50 border-green-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -813,7 +813,7 @@ export function TenderProcurementPortal() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
         </div>
       </main>
     </div>

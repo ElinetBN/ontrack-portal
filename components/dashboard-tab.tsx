@@ -143,7 +143,7 @@ export function DashboardTab({ tenders, submissions, onTenderCreate, onTenderInf
       {/* Sidebar - 1/3 width */}
       <div className="space-y-6">
         <CalendarSidebar />
-        <NotificationsSidebar />
+        {/* <NotificationsSidebar /> */}
       </div>
     </div>
   )

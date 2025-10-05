@@ -13,9 +13,6 @@ import Link from "next/link"
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
 
-  // 🔹 Default portal since selection is removed
-  const defaultPortal = "tender-procurement"
-
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -23,11 +20,11 @@ export function SignInForm() {
       id: "1", // Replace with real user id after authentication
       email: "user@example.com", // Replace with actual input value
       name: "John Doe", // Replace with real user name
-      portal: defaultPortal,
+      portal: "portal-selection", // Set to selection interface
     }
 
     setAuthCookie(userData)
-    window.location.href = `/portals/${defaultPortal}`
+    window.location.href = "/portal-selection"
   }
 
   return (
@@ -36,7 +33,7 @@ export function SignInForm() {
         {/* Header */}
         <div className="text-center space-y-2">
           <Link
-            href="/"
+            href="./portal-selection-interface"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors text-sm sm:text-base"
           >
             <ArrowLeft className="h-4 w-4" />

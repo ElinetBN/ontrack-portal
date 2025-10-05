@@ -24,28 +24,31 @@ export function SubmissionsTab({
 }: SubmissionsTabProps) {
   const [searchTerm, setSearchTerm] = useState("")
   
+  // COMPLETELY reset submissions count when there are no tenders
   const hasTenders = tenders.length > 0
-  const hasSubmissions = submissions.length > 0
+  const displaySubmissions = hasTenders ? submissions : []
+  const hasSubmissions = displaySubmissions.length > 0
 
-  // Filter submissions based on search term
-  const filteredSubmissions = submissions.filter(submission =>
+  // Filter submissions based on search term - only if we have submissions to filter
+  const filteredSubmissions = hasTenders ? displaySubmissions.filter(submission =>
     submission.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.tenderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.status.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  ) : []
 
-  // Get tender title for display
+  // Get tender title for display - only if we have tenders
   const getTenderTitle = (tenderId: string) => {
+    if (!hasTenders) return tenderId
     const tender = tenders.find(t => t.id === tenderId)
     return tender ? tender.title : tenderId
   }
 
-  // Calculate submission statistics
+  // Calculate submission statistics - always based on displaySubmissions (which is empty when no tenders)
   const submissionStats = {
-    total: submissions.length,
-    underReview: submissions.filter(sub => sub.status === "Under Review").length,
-    evaluated: submissions.filter(sub => sub.status === "Evaluated").length,
-    compliant: submissions.filter(sub => sub.status === "Compliant").length
+    total: displaySubmissions.length,
+    underReview: displaySubmissions.filter(sub => sub.status === "Under Review").length,
+    evaluated: displaySubmissions.filter(sub => sub.status === "Evaluated").length,
+    compliant: displaySubmissions.filter(sub => sub.status === "Compliant").length
   }
 
   return (
@@ -54,7 +57,7 @@ export function SubmissionsTab({
         <div>
           <h2 className="text-2xl font-bold">Submission Management</h2>
           <p className="text-muted-foreground">
-            Review and manage {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+            Review and manage {displaySubmissions.length} submission{displaySubmissions.length !== 1 ? 's' : ''}
           </p>
         </div>
         {hasTenders && (
@@ -65,7 +68,7 @@ export function SubmissionsTab({
         )}
       </div>
 
-      {/* Submission Statistics */}
+      {/* Submission Statistics - Only show when there are submissions */}
       {hasSubmissions && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
@@ -123,7 +126,7 @@ export function SubmissionsTab({
         </div>
       )}
 
-      {/* Search and Filter */}
+      {/* Search and Filter - Only show when there are submissions */}
       {hasSubmissions && (
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
@@ -144,39 +147,41 @@ export function SubmissionsTab({
 
       {/* Submissions List */}
       <div className="space-y-4">
-        {hasSubmissions ? (
-          filteredSubmissions.length > 0 ? (
-            filteredSubmissions.map((submission) => (
-              <SubmissionCard 
-                key={submission.id} 
-                submission={submission}
-                tenderTitle={getTenderTitle(submission.tenderId)}
-                onDocumentsUpdate={onDocumentsUpdate}
-                onReviewClick={onReviewClick}
-              />
-            ))
+        {hasTenders ? (
+          hasSubmissions ? (
+            filteredSubmissions.length > 0 ? (
+              filteredSubmissions.map((submission) => (
+                <SubmissionCard 
+                  key={submission.id} 
+                  submission={submission}
+                  tenderTitle={getTenderTitle(submission.tenderId)}
+                  onDocumentsUpdate={onDocumentsUpdate}
+                  onReviewClick={onReviewClick}
+                />
+              ))
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">No submissions found matching your search criteria.</p>
+                </CardContent>
+              </Card>
+            )
           ) : (
             <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">No submissions found matching your search criteria.</p>
+              <CardContent className="py-12 text-center">
+                <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Submissions Yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  When suppliers submit bids for your tenders, they will appear here for review.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Make sure your tenders are published and shared with suppliers to start receiving submissions.
+                </p>
               </CardContent>
             </Card>
           )
-        ) : hasTenders ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-                <FileText className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No Submissions Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                When suppliers submit bids for your tenders, they will appear here for review.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Make sure your tenders are published and shared with suppliers to start receiving submissions.
-              </p>
-            </CardContent>
-          </Card>
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
@@ -198,7 +203,7 @@ export function SubmissionsTab({
         )}
       </div>
 
-      {/* Submission Status Summary */}
+      {/* Submission Status Summary - Only show when there are submissions */}
       {hasSubmissions && (
         <Card>
           <CardHeader>

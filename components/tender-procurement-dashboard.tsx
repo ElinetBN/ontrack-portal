@@ -14,6 +14,7 @@ import { ContractsTab } from "./contracts-tab"
 import { ReviewTab } from "./review-tab"
 import { TenderRegistrationPopup } from "./tender-registration-popup"
 import { TenderInfoPopup } from "./tender-info-popup"
+import { CalendarSidebar } from "./calendar-sidebar"
 
 // Import data and types
 import { initialTenders, initialSubmissions } from "../data/mock-data"
@@ -42,6 +43,42 @@ export function TenderProcurementDashboard() {
     }
   }
 
+  // Calendar Sidebar Handlers
+  const handleStatsClick = (statType: string, data: any) => {
+    console.log('Stats clicked:', statType, data)
+    // Navigate to relevant tabs based on stat type
+    if (statType === 'pendingRequests') {
+      setActiveTab('submissions')
+    } else if (statType === 'upcomingDeadlines' || statType === 'activeProjects') {
+      setActiveTab('tenders')
+    } else if (statType === 'completedThisMonth') {
+      setActiveTab('review')
+    }
+  }
+
+  const handleEventClick = (event: any) => {
+    console.log('Event clicked:', event)
+    // Show event details or navigate to relevant section
+    if (event.type === 'deadline') {
+      // Find related tender and show its info
+      const relatedTender = tenders.find(t => 
+        t.title.toLowerCase().includes(event.title.toLowerCase().split(' - ')[1]?.toLowerCase() || '')
+      )
+      if (relatedTender) {
+        setSelectedTenderInfo(relatedTender)
+        setShowTenderInfo(true)
+      }
+    } else if (event.type === 'meeting') {
+      setActiveTab('evaluation')
+    }
+  }
+
+  const handleBidPortalClick = () => {
+    console.log('Bid portal clicked')
+    // Navigate to submissions tab for bid management
+    setActiveTab('submissions')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <PortalHeader
@@ -66,16 +103,32 @@ export function TenderProcurementDashboard() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <DashboardTab 
-              tenders={tenders}
-              submissions={submissions}
-              onTenderCreate={() => setIsRegistrationOpen(true)}
-              onTenderInfoClick={(tender) => {
-                setSelectedTenderInfo(tender)
-                setShowTenderInfo(true)
-              }}
-              onReviewClick={handleReviewClick}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Main Content - 2/3 width */}
+              <div className="lg:col-span-2">
+                <DashboardTab 
+                  tenders={tenders}
+                  submissions={submissions}
+                  onTenderCreate={() => setIsRegistrationOpen(true)}
+                  onTenderInfoClick={(tender) => {
+                    setSelectedTenderInfo(tender)
+                    setShowTenderInfo(true)
+                  }}
+                  onReviewClick={handleReviewClick}
+                />
+              </div>
+
+              {/* Sidebar - 1/3 width */}
+              <div className="space-y-6">
+                <CalendarSidebar 
+                  onStatsClick={handleStatsClick}
+                  onEventClick={handleEventClick}
+                  onBidPortalClick={handleBidPortalClick}
+                  tenders={tenders}
+                  submissions={submissions}
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="tenders">
@@ -95,6 +148,7 @@ export function TenderProcurementDashboard() {
               tenders={tenders}
               onDocumentsUpdate={handleDocumentsUpdate}
               onReviewClick={handleReviewClick}
+              onTenderCreate={() => setIsRegistrationOpen(true)}
             />
           </TabsContent>
 

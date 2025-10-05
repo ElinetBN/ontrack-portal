@@ -4,36 +4,8 @@ export const initialTenders: Tender[] = []
 
 export const initialSubmissions: Submission[] = []
   
-export const calendarEvents: CalendarEvent[] = [
-  {
-    id: 1,
-    date: "2024-06-01",
-    time: "2:00pm",
-    title: "Bid specification - Appointment of a consultant to formulate a strategy for Microsoft BI stack",
-    type: "specification"
-  },
-  {
-    id: 2,
-    date: "2024-06-13",
-    time: "8:00am",
-    title: "Advert issue - Appointment of a consultant to formulate a strategy for Microsoft BI stack",
-    type: "advert"
-  },
-  {
-    id: 3,
-    date: "2024-06-16",
-    time: "10:00am",
-    title: "Bid submission deadline - Office Furniture Supply",
-    type: "deadline"
-  },
-  {
-    id: 4,
-    date: "2024-06-20",
-    time: "3:00pm",
-    title: "Evaluation committee meeting",
-    type: "meeting"
-  }
-]
+export const calendarEvents: CalendarEvent[] = []
+ 
 
 export const notifications: Notification[] = [
   {

@@ -20,6 +20,9 @@ import { CalendarSidebar } from "./calendar-sidebar"
 import { initialTenders, initialSubmissions } from "../data/mock-data"
 import { useTenderManagement } from "../hooks/use-tender-management"
 
+
+
+
 export function TenderProcurementDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)

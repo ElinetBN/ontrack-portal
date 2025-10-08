@@ -1,11 +1,10 @@
 import { Submission, Tender } from "../types"
 import { SubmissionCard } from "./submission-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-
 import { Button } from "@/components/ui/button"
 import { FileText, Plus, Search, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 
 interface SubmissionsTabProps {
   submissions: Submission[]
@@ -24,31 +23,55 @@ export function SubmissionsTab({
 }: SubmissionsTabProps) {
   const [searchTerm, setSearchTerm] = useState("")
   
-  // COMPLETELY reset submissions count when there are no tenders
+  // CRITICAL FIX: Ensure submissions are unique and only for existing tenders
+  const { uniqueSubmissions, filteredSubmissions, submissionStats } = useMemo(() => {
+    // Step 1: Get all valid tender IDs
+    const validTenderIds = new Set(tenders.map(tender => tender.id))
+    
+    // Step 2: Remove duplicate submissions and filter by valid tenders
+    const seenSubmissionIds = new Set()
+    const uniqueSubmissions = submissions.filter(submission => {
+      // Remove duplicates by ID
+      if (seenSubmissionIds.has(submission.id)) {
+        return false
+      }
+      seenSubmissionIds.add(submission.id)
+      
+      // Only include submissions for existing tenders
+      return validTenderIds.has(submission.tenderId)
+    })
+    
+    // Step 3: Apply search filter
+    const filteredSubmissions = searchTerm.trim() === "" 
+      ? uniqueSubmissions 
+      : uniqueSubmissions.filter(submission =>
+          submission.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.tenderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.status.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+
+    // Step 4: Calculate statistics
+    const submissionStats = {
+      total: uniqueSubmissions.length,
+      underReview: uniqueSubmissions.filter(sub => sub.status === "Under Review").length,
+      evaluated: uniqueSubmissions.filter(sub => sub.status === "Evaluated").length,
+      compliant: uniqueSubmissions.filter(sub => sub.status === "Compliant").length
+    }
+
+    return { 
+      uniqueSubmissions, 
+      filteredSubmissions, 
+      submissionStats 
+    }
+  }, [submissions, tenders, searchTerm])
+
   const hasTenders = tenders.length > 0
-  const displaySubmissions = hasTenders ? submissions : []
-  const hasSubmissions = displaySubmissions.length > 0
+  const hasSubmissions = uniqueSubmissions.length > 0
 
-  // Filter submissions based on search term - only if we have submissions to filter
-  const filteredSubmissions = hasTenders ? displaySubmissions.filter(submission =>
-    submission.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    submission.tenderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    submission.status.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : []
-
-  // Get tender title for display - only if we have tenders
+  // Get tender title for display
   const getTenderTitle = (tenderId: string) => {
-    if (!hasTenders) return tenderId
     const tender = tenders.find(t => t.id === tenderId)
     return tender ? tender.title : tenderId
-  }
-
-  // Calculate submission statistics - always based on displaySubmissions (which is empty when no tenders)
-  const submissionStats = {
-    total: displaySubmissions.length,
-    underReview: displaySubmissions.filter(sub => sub.status === "Under Review").length,
-    evaluated: displaySubmissions.filter(sub => sub.status === "Evaluated").length,
-    compliant: displaySubmissions.filter(sub => sub.status === "Compliant").length
   }
 
   return (
@@ -57,7 +80,7 @@ export function SubmissionsTab({
         <div>
           <h2 className="text-2xl font-bold">Submission Management</h2>
           <p className="text-muted-foreground">
-            Review and manage {displaySubmissions.length} submission{displaySubmissions.length !== 1 ? 's' : ''}
+            Review and manage {uniqueSubmissions.length} submission{uniqueSubmissions.length !== 1 ? 's' : ''}
           </p>
         </div>
         {hasTenders && (
@@ -225,7 +248,7 @@ export function SubmissionsTab({
                     <div className="w-20 bg-gray-200 rounded-full h-2">
                       <div 
                         className="h-2 rounded-full bg-blue-600"
-                        style={{ width: `${(count / submissionStats.total) * 100}%` }}
+                        style={{ width: `${submissionStats.total > 0 ? (count / submissionStats.total) * 100 : 0}%` }}
                       />
                     </div>
                   </div>

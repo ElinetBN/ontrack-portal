@@ -19,8 +19,27 @@ interface TenderRegistrationPopupProps {
   onTenderCreate: (tender: Tender) => void
 }
 
+interface FormErrors {
+  tenderTitle?: string
+  category?: string
+  tenderDescription?: string
+  location?: string
+  estimatedValue?: string
+  openingDate?: string
+  closingDate?: string
+  closingTime?: string
+  contactName?: string
+  contactEmail?: string
+  contactPhone?: string
+  evaluationCriteria?: string
+  mandatoryDocuments?: string
+  complianceAccepted?: string
+}
+
 export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: TenderRegistrationPopupProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [errors, setErrors] = useState<FormErrors>({})
+  
   const [formData, setFormData] = useState({
     // Tender Information
     tenderTitle: "",
@@ -63,11 +82,104 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
     feeAmount: ""
   })
 
+  // Validation functions
+  const isValidEmail = (email: string): boolean => {
+    return /\S+@\S+\.\S+/.test(email)
+  }
+
+  const isValidSouthAfricanPhone = (phone: string): boolean => {
+    // South African phone number validation
+    const saPhoneRegex = /^(\+27|0)[\s-]?[1-9][\d\s-]?\d{2}[\s-]?\d{3}[\s-]?\d{3,4}$/
+    return saPhoneRegex.test(phone.replace(/\s/g, ''))
+  }
+
+  const validateCurrentStep = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    switch (currentStep) {
+      case 1:
+        if (!formData.tenderTitle.trim()) {
+          newErrors.tenderTitle = "Tender title is required"
+        }
+        if (!formData.category) {
+          newErrors.category = "Category is required"
+        }
+        if (!formData.tenderDescription.trim()) {
+          newErrors.tenderDescription = "Tender description is required"
+        }
+        break
+
+      case 2:
+        if (!formData.location.trim()) {
+          newErrors.location = "Location is required"
+        }
+        if (!formData.estimatedValue.trim()) {
+          newErrors.estimatedValue = "Estimated value is required"
+        }
+        break
+
+      case 3:
+        if (!formData.openingDate) {
+          newErrors.openingDate = "Opening date is required"
+        }
+        if (!formData.closingDate) {
+          newErrors.closingDate = "Closing date is required"
+        }
+        if (!formData.closingTime) {
+          newErrors.closingTime = "Closing time is required"
+        }
+        if (!formData.contactName.trim()) {
+          newErrors.contactName = "Contact name is required"
+        }
+        if (!formData.contactEmail.trim()) {
+          newErrors.contactEmail = "Contact email is required"
+        } else if (!isValidEmail(formData.contactEmail)) {
+          newErrors.contactEmail = "Please enter a valid email address"
+        }
+        if (formData.contactPhone && !isValidSouthAfricanPhone(formData.contactPhone)) {
+          newErrors.contactPhone = "Please enter a valid South African phone number (e.g., +27 12 345 6789 or 012 345 6789)"
+        }
+        
+        // Validate dates
+        if (formData.openingDate && formData.closingDate) {
+          const opening = new Date(formData.openingDate)
+          const closing = new Date(formData.closingDate)
+          if (closing <= opening) {
+            newErrors.closingDate = "Closing date must be after opening date"
+          }
+        }
+        break
+
+      case 4:
+        if (formData.evaluationCriteria.length === 0) {
+          newErrors.evaluationCriteria = "At least one evaluation criteria must be selected"
+        }
+        if (formData.mandatoryDocuments.length === 0) {
+          newErrors.mandatoryDocuments = "At least one mandatory document must be selected"
+        }
+        if (!formData.complianceAccepted) {
+          newErrors.complianceAccepted = "You must acknowledge the compliance requirements"
+        }
+        break
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
+    
+    // Clear error when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }))
+    }
   }
 
   const handleCheckboxToggle = (field: string, item: string) => {
@@ -77,6 +189,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
         ? prev[field].filter(i => i !== item)
         : [...prev[field], item]
     }))
+    
+    // Clear error when user selects an option
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }))
+    }
   }
 
   const handleFileUpload = (files: FileList) => {
@@ -122,7 +242,67 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Create new tender object
+    // Validate all steps before submission
+    let allStepsValid = true;
+    
+    // Validate step 1
+    setCurrentStep(1);
+    if (!validateCurrentStep()) allStepsValid = false;
+    
+    // Validate step 2
+    setCurrentStep(2);
+    if (!validateCurrentStep()) allStepsValid = false;
+    
+    // Validate step 3
+    setCurrentStep(3);
+    if (!validateCurrentStep()) allStepsValid = false;
+    
+    // Validate step 4
+    setCurrentStep(4);
+    if (!validateCurrentStep()) allStepsValid = false;
+    
+    // If any step has errors, go to the first step with errors
+    if (!allStepsValid) {
+      // Find the first step with errors
+      for (let step = 1; step <= 4; step++) {
+        setCurrentStep(step);
+        const tempErrors: FormErrors = {};
+        
+        // Simulate validation for each step
+        switch (step) {
+          case 1:
+            if (!formData.tenderTitle.trim() || !formData.category || !formData.tenderDescription.trim()) {
+              setCurrentStep(1);
+              return;
+            }
+            break;
+          case 2:
+            if (!formData.location.trim() || !formData.estimatedValue.trim()) {
+              setCurrentStep(2);
+              return;
+            }
+            break;
+          case 3:
+            if (!formData.openingDate || !formData.closingDate || !formData.closingTime || 
+                !formData.contactName.trim() || !formData.contactEmail.trim() || 
+                !isValidEmail(formData.contactEmail)) {
+              setCurrentStep(3);
+              return;
+            }
+            break;
+          case 4:
+            if (formData.evaluationCriteria.length === 0 || formData.mandatoryDocuments.length === 0 || 
+                !formData.complianceAccepted) {
+              setCurrentStep(4);
+              return;
+            }
+            break;
+        }
+      }
+      return;
+    }
+
+    // If all validations pass, create the tender
     const newTender: Tender = {
       id: formData.tenderReference || generateTenderId(),
       title: formData.tenderTitle,
@@ -185,6 +365,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
       feeAmount: ""
     })
     
+    setErrors({})
     setCurrentStep(1)
     onClose()
   }
@@ -222,16 +403,32 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
       tenderFee: "",
       feeAmount: ""
     })
+    setErrors({})
     setCurrentStep(1)
     onClose()
   }
 
   const nextStep = () => {
-    setCurrentStep(prev => Math.min(prev + 1, 5))
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => Math.min(prev + 1, 5))
+    } else {
+      // Scroll to the first error on the current page
+      setTimeout(() => {
+        const firstErrorElement = document.querySelector('.border-red-500, .text-red-500')
+        if (firstErrorElement) {
+          firstErrorElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          })
+        }
+      }, 100)
+    }
   }
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1))
+    // Clear errors when going back
+    setErrors({})
   }
 
   if (!isOpen) return null
@@ -279,7 +476,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                 
                 <div className="space-y-6">
                   {/* Tender Title */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="tenderTitle" className="text-sm font-medium">
                         Tender Title <span className="text-red-500">*</span>
@@ -292,9 +489,11 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="Enter tender title"
                         value={formData.tenderTitle}
                         onChange={(e) => handleInputChange("tenderTitle", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.tenderTitle ? 'border-red-500' : ''}`}
                       />
+                      {errors.tenderTitle && (
+                        <p className="text-red-500 text-xs mt-1">{errors.tenderTitle}</p>
+                      )}
                     </div>
                   </div>
 
@@ -318,7 +517,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                   </div>
 
                   {/* Category */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="category" className="text-sm font-medium">
                         Category / Service Type <span className="text-red-500">*</span>
@@ -328,21 +527,23 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="category"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border rounded-md bg-white mt-1 ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
                         value={formData.category}
                         onChange={(e) => handleInputChange("category", e.target.value)}
-                        required
                       >
                         <option value="">Select Category</option>
                         {serviceCategories.map(category => (
                           <option key={category} value={category}>{category}</option>
                         ))}
                       </select>
+                      {errors.category && (
+                        <p className="text-red-500 text-xs mt-1">{errors.category}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Tender Description */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="tenderDescription" className="text-sm font-medium">
                         Tender Description / Scope of Work <span className="text-red-500">*</span>
@@ -356,9 +557,11 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         rows={8}
                         value={formData.tenderDescription}
                         onChange={(e) => handleInputChange("tenderDescription", e.target.value)}
-                        required
-                        className="w-full resize-vertical"
+                        className={`w-full resize-vertical ${errors.tenderDescription ? 'border-red-500' : ''}`}
                       />
+                      {errors.tenderDescription && (
+                        <p className="text-red-500 text-xs mt-1">{errors.tenderDescription}</p>
+                      )}
                     </div>
                   </div>
 
@@ -427,7 +630,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                 
                 <div className="space-y-6">
                   {/* Location */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="location" className="text-sm font-medium">
                         Location / Residence Name <span className="text-red-500">*</span>
@@ -440,14 +643,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="Enter project location"
                         value={formData.location}
                         onChange={(e) => handleInputChange("location", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.location ? 'border-red-500' : ''}`}
                       />
+                      {errors.location && (
+                        <p className="text-red-500 text-xs mt-1">{errors.location}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Estimated Value */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="estimatedValue" className="text-sm font-medium">
                         Estimated Project Value <span className="text-red-500">*</span>
@@ -460,12 +665,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         <Input
                           id="estimatedValue"
                           placeholder="Enter budget estimate"
-                          className="pl-8 w-full"
+                          className={`pl-8 w-full ${errors.estimatedValue ? 'border-red-500' : ''}`}
                           value={formData.estimatedValue}
                           onChange={(e) => handleInputChange("estimatedValue", e.target.value)}
-                          required
                         />
                       </div>
+                      {errors.estimatedValue && (
+                        <p className="text-red-500 text-xs mt-1">{errors.estimatedValue}</p>
+                      )}
                     </div>
                   </div>
 
@@ -584,7 +791,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                 
                 <div className="space-y-6">
                   {/* Opening Date */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="openingDate" className="text-sm font-medium">
                         Tender Opening Date <span className="text-red-500">*</span>
@@ -597,14 +804,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="date"
                         value={formData.openingDate}
                         onChange={(e) => handleInputChange("openingDate", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.openingDate ? 'border-red-500' : ''}`}
                       />
+                      {errors.openingDate && (
+                        <p className="text-red-500 text-xs mt-1">{errors.openingDate}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Closing Date */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="closingDate" className="text-sm font-medium">
                         Tender Closing Date <span className="text-red-500">*</span>
@@ -617,14 +826,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="date"
                         value={formData.closingDate}
                         onChange={(e) => handleInputChange("closingDate", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.closingDate ? 'border-red-500' : ''}`}
                       />
+                      {errors.closingDate && (
+                        <p className="text-red-500 text-xs mt-1">{errors.closingDate}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Closing Time */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="closingTime" className="text-sm font-medium">
                         Closing Time <span className="text-red-500">*</span>
@@ -637,9 +848,11 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="time"
                         value={formData.closingTime}
                         onChange={(e) => handleInputChange("closingTime", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.closingTime ? 'border-red-500' : ''}`}
                       />
+                      {errors.closingTime && (
+                        <p className="text-red-500 text-xs mt-1">{errors.closingTime}</p>
+                      )}
                     </div>
                   </div>
 
@@ -667,7 +880,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                   </div>
 
                   {/* Contact Person */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="contactName" className="text-sm font-medium">
                         Contact Person Name <span className="text-red-500">*</span>
@@ -680,14 +893,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="Full name"
                         value={formData.contactName}
                         onChange={(e) => handleInputChange("contactName", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.contactName ? 'border-red-500' : ''}`}
                       />
+                      {errors.contactName && (
+                        <p className="text-red-500 text-xs mt-1">{errors.contactName}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Contact Email */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="contactEmail" className="text-sm font-medium">
                         Contact Email <span className="text-red-500">*</span>
@@ -701,14 +916,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="email@example.com"
                         value={formData.contactEmail}
                         onChange={(e) => handleInputChange("contactEmail", e.target.value)}
-                        required
-                        className="w-full"
+                        className={`w-full ${errors.contactEmail ? 'border-red-500' : ''}`}
                       />
+                      {errors.contactEmail && (
+                        <p className="text-red-500 text-xs mt-1">{errors.contactEmail}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Contact Phone */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label htmlFor="contactPhone" className="text-sm font-medium">
                         Contact Phone
@@ -722,8 +939,11 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="+27 12 345 6789"
                         value={formData.contactPhone}
                         onChange={(e) => handleInputChange("contactPhone", e.target.value)}
-                        className="w-full"
+                        className={`w-full ${errors.contactPhone ? 'border-red-500' : ''}`}
                       />
+                      {errors.contactPhone && (
+                        <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>
+                      )}
                     </div>
                   </div>
 
@@ -758,7 +978,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                 
                 <div className="space-y-8">
                   {/* Evaluation Criteria */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label className="text-sm font-medium">
                         Evaluation Criteria <span className="text-red-500">*</span>
@@ -766,7 +986,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Select criteria for tender evaluation</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-200 rounded-lg p-6">
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.evaluationCriteria ? 'border-red-500' : 'border-gray-200'}`}>
                         {evaluationCriteria.map((criterion) => (
                           <div key={criterion} className="flex items-center space-x-3">
                             <input
@@ -782,11 +1002,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                           </div>
                         ))}
                       </div>
+                      {errors.evaluationCriteria && (
+                        <p className="text-red-500 text-xs mt-1">{errors.evaluationCriteria}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Mandatory Documents */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label className="text-sm font-medium">
                         Mandatory Documents Checklist <span className="text-red-500">*</span>
@@ -794,7 +1017,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Required documents from bidders</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-200 rounded-lg p-6">
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.mandatoryDocuments ? 'border-red-500' : 'border-gray-200'}`}>
                         {mandatoryDocuments.map((document) => (
                           <div key={document} className="flex items-center space-x-3">
                             <input
@@ -810,11 +1033,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                           </div>
                         ))}
                       </div>
+                      {errors.mandatoryDocuments && (
+                        <p className="text-red-500 text-xs mt-1">{errors.mandatoryDocuments}</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Compliance Acknowledgement */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     <div className="lg:col-span-1">
                       <Label className="text-sm font-medium">
                         Compliance Acknowledgement <span className="text-red-500">*</span>
@@ -822,19 +1048,21 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Terms and conditions acceptance</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-blue-50">
+                      <div className={`flex items-center space-x-3 p-4 border rounded-lg ${errors.complianceAccepted ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-blue-50'}`}>
                         <input
                           type="checkbox"
                           id="complianceAccepted"
                           checked={formData.complianceAccepted}
                           onChange={(e) => handleInputChange("complianceAccepted", e.target.checked)}
                           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          required
                         />
                         <Label htmlFor="complianceAccepted" className="text-sm font-normal">
                           I acknowledge that tenderers must accept all rules and terms of this tender
                         </Label>
                       </div>
+                      {errors.complianceAccepted && (
+                        <p className="text-red-500 text-xs mt-1">{errors.complianceAccepted}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -959,11 +1187,18 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
             </Button>
             
             {currentStep < 5 ? (
-              <Button type="button" onClick={nextStep} className="px-6 hover:bg-blue-600 transition-colors">
+              <Button 
+                type="button" 
+                onClick={nextStep} 
+                className="px-6 hover:bg-blue-600 transition-colors"
+              >
                 Next Step
               </Button>
             ) : (
-              <Button type="submit" className="px-6 hover:bg-blue-600 transition-colors">
+              <Button 
+                type="submit" 
+                className="px-6 hover:bg-blue-600 transition-colors"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Create Tender
               </Button>

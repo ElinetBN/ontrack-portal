@@ -1,56 +1,72 @@
-import { useState } from "react"
+// hooks/use-tender-management.ts
+import { useState, useCallback } from "react"
 import { Tender, Submission } from "../types"
 
 export function useTenderManagement(initialTenders: Tender[], initialSubmissions: Submission[]) {
-  const [tenders, setTenders] = useState<Tender[]>(initialTenders)
-  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions)
+  const [tenders, setTenders] = useState<Tender[]>(() => {
+    // Ensure initial tenders are unique
+    const seen = new Set()
+    return initialTenders.filter(tender => {
+      if (seen.has(tender.id)) return false
+      seen.add(tender.id)
+      return true
+    })
+  })
 
-  const handleTenderCreate = (newTender: Tender) => {
-    setTenders(prev => [newTender, ...prev])
-    
-    const supplierNames = ["Global Solutions Inc", "Innovate Partners", "Prime Contractors", "Elite Services Co", "Advanced Systems Ltd"]
-    const newSubmissions: Submission[] = Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, index) => ({
-      id: `SUB-${Date.now()}-${index}`,
-      tenderId: newTender.id,
-      supplier: supplierNames[Math.floor(Math.random() * supplierNames.length)],
-      submittedDate: new Date().toISOString().split('T')[0],
-      status: "Under Review",
-      score: (Math.floor(Math.random() * 20) + 70).toString(),
-      documents: [],
-    }))
-    
-    setSubmissions(prev => [...newSubmissions, ...prev])
-  }
+  const [submissions, setSubmissions] = useState<Submission[]>(() => {
+    // Ensure initial submissions are unique
+    const seen = new Set()
+    return initialSubmissions.filter(submission => {
+      if (seen.has(submission.id)) return false
+      seen.add(submission.id)
+      return true
+    })
+  })
 
-  const handleDocumentsUpdate = (submissionId: string, updatedDocuments: any[]) => {
-    setSubmissions(prev =>
-      prev.map(submission =>
-        submission.id === submissionId
-          ? { ...submission, documents: updatedDocuments }
-          : submission
+  const handleTenderCreate = useCallback((newTender: Tender) => {
+    setTenders(prev => {
+      const exists = prev.find(t => t.id === newTender.id)
+      if (exists) {
+        console.warn('Tender already exists:', newTender.id)
+        return prev
+      }
+      console.log('Adding new tender:', newTender.id)
+      return [...prev, newTender]
+    })
+  }, [])
+
+  const handleDocumentsUpdate = useCallback((submissionId: string, documents: any[]) => {
+    setSubmissions(prev => 
+      prev.map(sub => 
+        sub.id === submissionId 
+          ? { ...sub, documents } 
+          : sub
       )
     )
-  }
+  }, [])
 
-  const handleEvaluationComplete = (submissionId: string, score: number, status: string) => {
-    setSubmissions(prev =>
-      prev.map(submission =>
-        submission.id === submissionId
-          ? { ...submission, score: score.toString(), status }
-          : submission
+  const handleEvaluationComplete = useCallback((submissionId: string, score: number, status: string) => {
+    setSubmissions(prev => 
+      prev.map(sub => 
+        sub.id === submissionId 
+          ? { ...sub, score, status } 
+          : sub
       )
     )
-  }
+  }, [])
 
-  const handleTenderStatusChange = (tenderId: string, newStatus: string) => {
-    setTenders(prev =>
-      prev.map(tender =>
-        tender.id === tenderId
-          ? { ...tender, status: newStatus }
+  const handleTenderStatusChange = useCallback((tenderId: string, status: string) => {
+    setTenders(prev => 
+      prev.map(tender => 
+        tender.id === tenderId 
+          ? { ...tender, status } 
           : tender
       )
     )
-  }
+  }, [])
+
+  // Debug logging
+  console.log('Current state - Tenders:', tenders.length, 'Submissions:', submissions.length)
 
   return {
     tenders,

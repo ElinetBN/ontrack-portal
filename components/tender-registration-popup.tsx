@@ -1,10 +1,12 @@
+"use client"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, X, FileUp, FileText } from "lucide-react"
-import { Tender } from "../types"
+import { TenderData, TenderUtils } from "@/lib/api/tender"
 import { 
   serviceCategories, 
   cidbGrading, 
@@ -16,7 +18,7 @@ import {
 interface TenderRegistrationPopupProps {
   isOpen: boolean
   onClose: () => void
-  onTenderCreate: (tender: Tender) => void
+  onTenderCreate: (tenderData: TenderData) => Promise<any>
 }
 
 interface FormErrors {
@@ -39,6 +41,8 @@ interface FormErrors {
 export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: TenderRegistrationPopupProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [loading, setLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     // Tender Information
@@ -180,6 +184,11 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
         [field]: undefined
       }))
     }
+
+    // Clear API error when user makes changes
+    if (apiError) {
+      setApiError(null)
+    }
   }
 
   const handleCheckboxToggle = (field: string, item: string) => {
@@ -214,33 +223,18 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
     }))
   }
 
-  const generateTenderId = () => {
-    const currentYear = new Date().getFullYear()
-    const randomNum = Math.floor(Math.random() * 900) + 100
-    return `TND-${currentYear}-${randomNum}`
-  }
-
-  const getRandomDepartment = () => {
-    const departments = [
-      "Information Technology",
-      "Facilities Management", 
-      "Security",
-      "Human Resources",
-      "Finance",
-      "Operations",
-      "Marketing",
-      "Research & Development"
-    ]
-    return departments[Math.floor(Math.random() * departments.length)]
+  const generateTenderNumber = () => {
+    return TenderUtils.generateTenderNumber(formData.organization)
   }
 
   const formatBudget = (amount: string) => {
     const numericValue = parseInt(amount.replace(/\D/g, '') || '0')
-    return `R ${numericValue.toLocaleString()}`
+    return numericValue
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setApiError(null)
     
     // Validate all steps before submission
     let allStepsValid = true;
@@ -302,36 +296,60 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
       return;
     }
 
-    // If all validations pass, create the tender
-    const newTender: Tender = {
-      id: formData.tenderReference || generateTenderId(),
-      title: formData.tenderTitle,
-      department: getRandomDepartment(),
-      status: formData.tenderStatus === "published" ? "Open" : "Draft",
-      deadline: formData.closingDate,
-      budget: formatBudget(formData.estimatedValue),
-      submissions: 0,
-      category: formData.category,
-      description: formData.tenderDescription,
-      referenceNumber: formData.tenderReference,
-      requestedItems: formData.mandatoryDocuments,
-      createdDate: new Date().toISOString().split('T')[0],
-      location: formData.location,
-      contractPeriod: formData.contractPeriod,
-      cidbGrading: formData.cidbGrading,
-      bbbeeLevel: formData.bbbeeLevel,
-      contactPerson: formData.contactName,
-      contactEmail: formData.contactEmail,
-      contactPhone: formData.contactPhone,
-      submissionMethod: formData.submissionMethod,
-      tenderFee: formData.tenderFee ? `R ${formData.feeAmount}` : "No fee",
-      advertisementLink: `https://example.gov.za/tenders/${formData.tenderReference || generateTenderId()}`
+    try {
+      setLoading(true)
+
+      // Prepare tender data for API
+      const tenderData: TenderData = {
+        tenderNumber: formData.tenderReference || generateTenderNumber(),
+        title: formData.tenderTitle,
+        description: formData.tenderDescription,
+        organization: "University Procurement", // You can make this dynamic
+        category: formData.category,
+        value: formatBudget(formData.estimatedValue),
+        currency: 'ZAR',
+        status: formData.tenderStatus === "published" ? "open" : "pending",
+        publishDate: formData.openingDate ? new Date(formData.openingDate) : new Date(),
+        closingDate: new Date(formData.closingDate),
+        location: formData.location,
+        contactPerson: {
+          name: formData.contactName,
+          email: formData.contactEmail,
+          phone: formData.contactPhone
+        },
+        requirements: formData.mandatoryDocuments,
+        tags: formData.evaluationCriteria,
+        metadata: {
+          source: 'web-portal',
+          externalId: formData.tenderReference || generateTenderNumber(),
+          lastUpdated: new Date(),
+          createdBy: 'system-user' // You can get this from auth context
+        }
+      }
+
+      // Validate tender data
+      const validation = TenderUtils.validateTenderData(tenderData)
+      if (!validation.isValid) {
+        setApiError(validation.errors.join(', '))
+        return
+      }
+
+      // Call the API through the hook
+      await onTenderCreate(tenderData)
+
+      // Reset form and close
+      resetForm()
+      onClose()
+
+    } catch (error: any) {
+      console.error('Error creating tender:', error)
+      setApiError(error.message || 'Failed to create tender. Please try again.')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    // Call the callback to add the new tender
-    onTenderCreate(newTender)
-
-    // Reset form and close
+  const resetForm = () => {
     setFormData({
       tenderTitle: "",
       tenderReference: "",
@@ -364,47 +382,13 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
       tenderFee: "",
       feeAmount: ""
     })
-    
     setErrors({})
     setCurrentStep(1)
-    onClose()
+    setApiError(null)
   }
 
   const handleClose = () => {
-    setFormData({
-      tenderTitle: "",
-      tenderReference: "",
-      category: "",
-      tenderDescription: "",
-      supportingDocuments: [],
-      location: "",
-      estimatedValue: "",
-      contractPeriod: "",
-      startDate: "",
-      endDate: "",
-      cidbGrading: "",
-      accreditation: "",
-      bbbeeLevel: "",
-      insuranceRequired: false,
-      universityVendorReg: false,
-      openingDate: "",
-      closingDate: "",
-      closingTime: "",
-      submissionMethod: "online",
-      contactName: "",
-      contactEmail: "",
-      contactPhone: "",
-      clarificationDeadline: "",
-      evaluationCriteria: [],
-      mandatoryDocuments: [],
-      complianceAccepted: false,
-      tenderStatus: "draft",
-      confidentiality: false,
-      tenderFee: "",
-      feeAmount: ""
-    })
-    setErrors({})
-    setCurrentStep(1)
+    resetForm()
     onClose()
   }
 
@@ -429,6 +413,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
     setCurrentStep(prev => Math.max(prev - 1, 1))
     // Clear errors when going back
     setErrors({})
+    setApiError(null)
   }
 
   if (!isOpen) return null
@@ -441,10 +426,23 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
             <h2 className="text-xl font-bold">Create New Tender</h2>
             <p className="text-sm text-muted-foreground">Step {currentStep} of 5</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleClose} className="hover:bg-gray-100 transition-colors">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClose} 
+            className="hover:bg-gray-100 transition-colors"
+            disabled={loading}
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* API Error Display */}
+        {apiError && (
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+            <p className="text-sm font-medium">Error: {apiError}</p>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="px-6 pt-4">
@@ -490,6 +488,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         value={formData.tenderTitle}
                         onChange={(e) => handleInputChange("tenderTitle", e.target.value)}
                         className={`w-full ${errors.tenderTitle ? 'border-red-500' : ''}`}
+                        disabled={loading}
                       />
                       {errors.tenderTitle && (
                         <p className="text-red-500 text-xs mt-1">{errors.tenderTitle}</p>
@@ -512,6 +511,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         value={formData.tenderReference}
                         onChange={(e) => handleInputChange("tenderReference", e.target.value)}
                         className="w-full"
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -527,9 +527,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="category"
-                        className={`w-full p-3 border rounded-md bg-white mt-1 ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`w-full p-3 border rounded-md bg-white mt-1 ${errors.category ? 'border-red-500' : 'border-gray-300'} ${loading ? 'opacity-50' : ''}`}
                         value={formData.category}
                         onChange={(e) => handleInputChange("category", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="">Select Category</option>
                         {serviceCategories.map(category => (
@@ -557,7 +558,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         rows={8}
                         value={formData.tenderDescription}
                         onChange={(e) => handleInputChange("tenderDescription", e.target.value)}
-                        className={`w-full resize-vertical ${errors.tenderDescription ? 'border-red-500' : ''}`}
+                        className={`w-full resize-vertical ${errors.tenderDescription ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.tenderDescription && (
                         <p className="text-red-500 text-xs mt-1">{errors.tenderDescription}</p>
@@ -574,7 +576,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">BoQ, drawings, specifications, TOR, RFP docs</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <div className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center ${loading ? 'opacity-50' : ''}`}>
                         <FileUp className="h-10 w-10 text-gray-400 mx-auto mb-3" />
                         <p className="text-sm text-gray-600 mb-3">
                           Drag and drop files here or click to browse
@@ -585,9 +587,16 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                           multiple
                           onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                           className="hidden"
+                          disabled={loading}
                         />
                         <Label htmlFor="supportingDocuments">
-                          <Button variant="outline" type="button" asChild className="hover:bg-gray-100 transition-colors">
+                          <Button 
+                            variant="outline" 
+                            type="button" 
+                            asChild 
+                            className="hover:bg-gray-100 transition-colors"
+                            disabled={loading}
+                          >
                             <span>Choose Files</span>
                           </Button>
                         </Label>
@@ -608,6 +617,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                                 size="sm"
                                 onClick={() => removeFile(index)}
                                 className="hover:bg-gray-200 transition-colors"
+                                disabled={loading}
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -643,7 +653,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="Enter project location"
                         value={formData.location}
                         onChange={(e) => handleInputChange("location", e.target.value)}
-                        className={`w-full ${errors.location ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.location ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.location && (
                         <p className="text-red-500 text-xs mt-1">{errors.location}</p>
@@ -665,9 +676,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         <Input
                           id="estimatedValue"
                           placeholder="Enter budget estimate"
-                          className={`pl-8 w-full ${errors.estimatedValue ? 'border-red-500' : ''}`}
+                          className={`pl-8 w-full ${errors.estimatedValue ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
                           value={formData.estimatedValue}
                           onChange={(e) => handleInputChange("estimatedValue", e.target.value)}
+                          disabled={loading}
                         />
                       </div>
                       {errors.estimatedValue && (
@@ -690,7 +702,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="e.g., 12 months"
                         value={formData.contractPeriod}
                         onChange={(e) => handleInputChange("contractPeriod", e.target.value)}
-                        className="w-full"
+                        className={`w-full ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -706,9 +719,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="cidbGrading"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border border-gray-300 rounded-md bg-white mt-1 ${loading ? 'opacity-50' : ''}`}
                         value={formData.cidbGrading}
                         onChange={(e) => handleInputChange("cidbGrading", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="">Select CIDB Grade</option>
                         {cidbGrading.map(grade => (
@@ -729,9 +743,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="bbbeeLevel"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border border-gray-300 rounded-md bg-white mt-1 ${loading ? 'opacity-50' : ''}`}
                         value={formData.bbbeeLevel}
                         onChange={(e) => handleInputChange("bbbeeLevel", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="">Select B-BBEE Level</option>
                         {bbbeeLevels.map(level => (
@@ -750,14 +765,15 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Additional mandatory requirements</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
+                      <div className={`space-y-4 p-4 border border-gray-200 rounded-lg ${loading ? 'opacity-50' : ''}`}>
                         <div className="flex items-center space-x-3">
                           <input
                             type="checkbox"
                             id="insuranceRequired"
                             checked={formData.insuranceRequired}
                             onChange={(e) => handleInputChange("insuranceRequired", e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                            disabled={loading}
                           />
                           <Label htmlFor="insuranceRequired" className="text-sm font-normal">
                             Insurance Required
@@ -769,7 +785,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                             id="universityVendorReg"
                             checked={formData.universityVendorReg}
                             onChange={(e) => handleInputChange("universityVendorReg", e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                            disabled={loading}
                           />
                           <Label htmlFor="universityVendorReg" className="text-sm font-normal">
                             University Vendor Registration Required
@@ -804,7 +821,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="date"
                         value={formData.openingDate}
                         onChange={(e) => handleInputChange("openingDate", e.target.value)}
-                        className={`w-full ${errors.openingDate ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.openingDate ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.openingDate && (
                         <p className="text-red-500 text-xs mt-1">{errors.openingDate}</p>
@@ -826,7 +844,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="date"
                         value={formData.closingDate}
                         onChange={(e) => handleInputChange("closingDate", e.target.value)}
-                        className={`w-full ${errors.closingDate ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.closingDate ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.closingDate && (
                         <p className="text-red-500 text-xs mt-1">{errors.closingDate}</p>
@@ -848,7 +867,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="time"
                         value={formData.closingTime}
                         onChange={(e) => handleInputChange("closingTime", e.target.value)}
-                        className={`w-full ${errors.closingTime ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.closingTime ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.closingTime && (
                         <p className="text-red-500 text-xs mt-1">{errors.closingTime}</p>
@@ -867,9 +887,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="submissionMethod"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border border-gray-300 rounded-md bg-white mt-1 ${loading ? 'opacity-50' : ''}`}
                         value={formData.submissionMethod}
                         onChange={(e) => handleInputChange("submissionMethod", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="online">Online Upload Only</option>
                         <option value="email">Email Submission</option>
@@ -893,7 +914,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="Full name"
                         value={formData.contactName}
                         onChange={(e) => handleInputChange("contactName", e.target.value)}
-                        className={`w-full ${errors.contactName ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.contactName ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.contactName && (
                         <p className="text-red-500 text-xs mt-1">{errors.contactName}</p>
@@ -916,7 +938,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="email@example.com"
                         value={formData.contactEmail}
                         onChange={(e) => handleInputChange("contactEmail", e.target.value)}
-                        className={`w-full ${errors.contactEmail ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.contactEmail ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.contactEmail && (
                         <p className="text-red-500 text-xs mt-1">{errors.contactEmail}</p>
@@ -939,7 +962,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         placeholder="+27 12 345 6789"
                         value={formData.contactPhone}
                         onChange={(e) => handleInputChange("contactPhone", e.target.value)}
-                        className={`w-full ${errors.contactPhone ? 'border-red-500' : ''}`}
+                        className={`w-full ${errors.contactPhone ? 'border-red-500' : ''} ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                       {errors.contactPhone && (
                         <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>
@@ -961,7 +985,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                         type="date"
                         value={formData.clarificationDeadline}
                         onChange={(e) => handleInputChange("clarificationDeadline", e.target.value)}
-                        className="w-full"
+                        className={`w-full ${loading ? 'opacity-50' : ''}`}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -986,7 +1011,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Select criteria for tender evaluation</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.evaluationCriteria ? 'border-red-500' : 'border-gray-200'}`}>
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.evaluationCriteria ? 'border-red-500' : 'border-gray-200'} ${loading ? 'opacity-50' : ''}`}>
                         {evaluationCriteria.map((criterion) => (
                           <div key={criterion} className="flex items-center space-x-3">
                             <input
@@ -994,7 +1019,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                               id={`eval-${criterion}`}
                               checked={formData.evaluationCriteria.includes(criterion)}
                               onChange={() => handleCheckboxToggle("evaluationCriteria", criterion)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                              disabled={loading}
                             />
                             <Label htmlFor={`eval-${criterion}`} className="text-sm font-normal cursor-pointer">
                               {criterion}
@@ -1017,7 +1043,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Required documents from bidders</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.mandatoryDocuments ? 'border-red-500' : 'border-gray-200'}`}>
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-lg p-6 ${errors.mandatoryDocuments ? 'border-red-500' : 'border-gray-200'} ${loading ? 'opacity-50' : ''}`}>
                         {mandatoryDocuments.map((document) => (
                           <div key={document} className="flex items-center space-x-3">
                             <input
@@ -1025,7 +1051,8 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                               id={`doc-${document}`}
                               checked={formData.mandatoryDocuments.includes(document)}
                               onChange={() => handleCheckboxToggle("mandatoryDocuments", document)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                              disabled={loading}
                             />
                             <Label htmlFor={`doc-${document}`} className="text-sm font-normal cursor-pointer">
                               {document}
@@ -1048,13 +1075,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Terms and conditions acceptance</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className={`flex items-center space-x-3 p-4 border rounded-lg ${errors.complianceAccepted ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-blue-50'}`}>
+                      <div className={`flex items-center space-x-3 p-4 border rounded-lg ${errors.complianceAccepted ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-blue-50'} ${loading ? 'opacity-50' : ''}`}>
                         <input
                           type="checkbox"
                           id="complianceAccepted"
                           checked={formData.complianceAccepted}
                           onChange={(e) => handleInputChange("complianceAccepted", e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                          disabled={loading}
                         />
                         <Label htmlFor="complianceAccepted" className="text-sm font-normal">
                           I acknowledge that tenderers must accept all rules and terms of this tender
@@ -1088,9 +1116,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="tenderStatus"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border border-gray-300 rounded-md bg-white mt-1 ${loading ? 'opacity-50' : ''}`}
                         value={formData.tenderStatus}
                         onChange={(e) => handleInputChange("tenderStatus", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="draft">Draft</option>
                         <option value="published">Published</option>
@@ -1111,9 +1140,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                     <div className="lg:col-span-2">
                       <select
                         id="tenderFee"
-                        className="w-full p-3 border border-gray-300 rounded-md bg-white mt-1"
+                        className={`w-full p-3 border border-gray-300 rounded-md bg-white mt-1 ${loading ? 'opacity-50' : ''}`}
                         value={formData.tenderFee}
                         onChange={(e) => handleInputChange("tenderFee", e.target.value)}
+                        disabled={loading}
                       >
                         <option value="">No Fee</option>
                         <option value="fixed">Fixed Fee</option>
@@ -1137,9 +1167,10 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                           <Input
                             id="feeAmount"
                             placeholder="Enter fee amount"
-                            className="pl-8 w-full"
+                            className={`pl-8 w-full ${loading ? 'opacity-50' : ''}`}
                             value={formData.feeAmount}
                             onChange={(e) => handleInputChange("feeAmount", e.target.value)}
+                            disabled={loading}
                           />
                         </div>
                       </div>
@@ -1155,13 +1186,14 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                       <p className="text-xs text-muted-foreground mt-1">Include confidentiality requirements</p>
                     </div>
                     <div className="lg:col-span-2">
-                      <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                      <div className={`flex items-center space-x-3 p-4 border border-gray-200 rounded-lg ${loading ? 'opacity-50' : ''}`}>
                         <input
                           type="checkbox"
                           id="confidentiality"
                           checked={formData.confidentiality}
                           onChange={(e) => handleInputChange("confidentiality", e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className={`h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${loading ? 'opacity-50' : ''}`}
+                          disabled={loading}
                         />
                         <Label htmlFor="confidentiality" className="text-sm font-normal">
                           Include Confidentiality Clause in tender documents
@@ -1180,7 +1212,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
               type="button" 
               variant="outline" 
               onClick={prevStep}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || loading}
               className="px-6 hover:bg-gray-100 transition-colors"
             >
               Previous
@@ -1191,6 +1223,7 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
                 type="button" 
                 onClick={nextStep} 
                 className="px-6 hover:bg-blue-600 transition-colors"
+                disabled={loading}
               >
                 Next Step
               </Button>
@@ -1198,9 +1231,19 @@ export function TenderRegistrationPopup({ isOpen, onClose, onTenderCreate }: Ten
               <Button 
                 type="submit" 
                 className="px-6 hover:bg-blue-600 transition-colors"
+                disabled={loading}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Create Tender
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Tender
+                  </>
+                )}
               </Button>
             )}
           </div>

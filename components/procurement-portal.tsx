@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,6 +38,23 @@ import {
   Target,
 } from "lucide-react"
 import { logout } from "@/lib/auth"
+
+// Types for tender data
+interface Tender {
+  id: string
+  title: string
+  description: string
+  status: string
+  budget: number
+  deadline: string
+  submissions: number
+  category: string
+  publishedDate: string
+  requirements: string[]
+  contactPerson: string
+  contactEmail: string
+  documents: string[]
+}
 
 // Mock data for the portal dashboard
 const quickStats = [
@@ -176,8 +193,120 @@ type UserRole = "procurement-officer" | "bidder" | "evaluator";
 export function TenderProcurementPortal() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchTerm, setSearchTerm] = useState("")
-  const [userRole, setUserRole] = useState<UserRole>("procurement-officer")
+  const [userRole, setUserRole] = useState<UserRole>("bidder") // Default to bidder for testing
   const [showTenderRegistration, setShowTenderRegistration] = useState(false)
+  const [tenders, setTenders] = useState<Tender[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Mock data for fallback
+  const mockTenders: Tender[] = [
+    {
+      id: "1",
+      title: "IT Infrastructure Upgrade",
+      description: "Comprehensive upgrade of IT infrastructure including servers, networking equipment, and security systems.",
+      status: "open",
+      budget: 1500000,
+      deadline: "2024-02-15",
+      submissions: 8,
+      category: "Technology",
+      publishedDate: "2024-01-15",
+      requirements: ["ISO 27001 Certification", "5+ years experience", "Technical proposal"],
+      contactPerson: "John Smith",
+      contactEmail: "john.smith@company.com",
+      documents: ["tender_doc_1.pdf", "technical_specs.pdf"]
+    },
+    {
+      id: "2",
+      title: "Office Furniture Supply",
+      description: "Supply and installation of modern office furniture for new headquarters.",
+      status: "open",
+      budget: 500000,
+      deadline: "2024-02-28",
+      submissions: 12,
+      category: "Furniture",
+      publishedDate: "2024-01-20",
+      requirements: ["Quality certification", "Environmental compliance", "Installation plan"],
+      contactPerson: "Sarah Johnson",
+      contactEmail: "sarah.j@company.com",
+      documents: ["furniture_specs.pdf", "requirements.pdf"]
+    },
+    {
+      id: "3",
+      title: "Cleaning Services Contract",
+      description: "Professional cleaning services for corporate offices on a monthly contract basis.",
+      status: "open",
+      budget: 300000,
+      deadline: "2024-03-10",
+      submissions: 5,
+      category: "Services",
+      publishedDate: "2024-01-25",
+      requirements: ["Cleaning certification", "Staff training records", "Insurance coverage"],
+      contactPerson: "Mike Brown",
+      contactEmail: "mike.brown@company.com",
+      documents: ["cleaning_contract.pdf", "specifications.pdf"]
+    }
+  ]
+
+  // Fetch tenders from database
+  const fetchTenders = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Replace this with your actual API endpoint
+      const response = await fetch('/api/tenders', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tenders')
+      }
+
+      const data = await response.json()
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setTenders(data)
+      } else if (data && Array.isArray(data.tenders)) {
+        // If the response has a tenders property that's an array
+        setTenders(data.tenders)
+      } else if (data && Array.isArray(data.data)) {
+        // If the response has a data property that's an array
+        setTenders(data.data)
+      } else {
+        // If the response structure is unexpected, use mock data
+        console.warn('Unexpected API response structure, using mock data')
+        setTenders(mockTenders)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tenders')
+      console.error('Error fetching tenders:', err)
+      // Fallback to mock data if API fails
+      setTenders(mockTenders)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handle browse tenders button click
+  const handleBrowseTenders = () => {
+    setActiveTab("tenders")
+    fetchTenders()
+  }
+
+  // Handle apply for tender
+  const handleApplyForTender = (tenderId: string) => {
+    // Navigate to application page or open application modal
+    window.location.href = `/portals/tender-procurement/apply/${tenderId}`
+  }
+
+  // Handle view tender details
+  const handleViewTenderDetails = (tenderId: string) => {
+    window.location.href = `/portals/tender-procurement/tenders/${tenderId}`
+  }
 
   const handleNavigateToDashboard = () => {
     window.location.href = "/portals/tender-procurement"
@@ -189,7 +318,6 @@ export function TenderProcurementPortal() {
 
   const handleStartTenderRegistration = () => {
     setShowTenderRegistration(true)
-    //setActiveTab("tenders")
     window.location.href = "/portals/tender-procurement"
   }
 
@@ -220,6 +348,23 @@ export function TenderProcurementPortal() {
       </Badge>
     )
   }
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-ZA', {
+      style: 'currency',
+      currency: 'ZAR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  // Filter tenders based on search term - FIXED: Added safe array check
+  const filteredTenders = Array.isArray(tenders) ? tenders.filter(tender =>
+    tender.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tender.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tender.category.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : []
 
   // Main Action Cards based on user role
   const MainActionCards = () => {
@@ -334,7 +479,10 @@ export function TenderProcurementPortal() {
                     <span>Submit your proposal</span>
                   </div>
                 </div>
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full">
+                <Button 
+                  onClick={handleBrowseTenders}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+                >
                   <Eye className="mr-2 h-5 w-5" />
                   Browse Tenders
                 </Button>
@@ -615,43 +763,98 @@ export function TenderProcurementPortal() {
                 </Button>
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2">Loading tenders...</span>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <Card className="border-red-200 bg-red-50">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2 text-red-700">
+                      <AlertCircle className="h-5 w-5" />
+                      <p>Error loading tenders: {error}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Tenders Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((item) => (
-                  <Card key={item} className="cursor-pointer hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">Tender {item}</CardTitle>
-                        <Badge variant={item % 2 === 0 ? "default" : "secondary"}>
-                          {item % 2 === 0 ? "Open" : "Draft"}
-                        </Badge>
-                      </div>
-                      <CardDescription>
-                        Tender description and brief details would appear here...
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Submissions</span>
-                          <span>{item * 3}</span>
+              {!loading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTenders.map((tender) => (
+                    <Card key={tender.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg">{tender.title}</CardTitle>
+                          {getStatusBadge(tender.status)}
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Budget</span>
-                          <span>R {item * 500000}</span>
+                        <CardDescription>{tender.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Category</span>
+                            <span>{tender.category}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Budget</span>
+                            <span>{formatCurrency(tender.budget)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Submissions</span>
+                            <span>{tender.submissions}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Deadline</span>
+                            <span>{new Date(tender.deadline).toLocaleDateString()}</span>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 mt-4">
+                            <Button 
+                              variant="outline" 
+                              className="flex-1"
+                              onClick={() => handleViewTenderDetails(tender.id)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </Button>
+                            {userRole === "bidder" && (
+                              <Button 
+                                className="flex-1 bg-green-600 hover:bg-green-700"
+                                onClick={() => handleApplyForTender(tender.id)}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Apply
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Deadline</span>
-                          <span>2024-02-{10 + item}</span>
-                        </div>
-                        <Button className="w-full mt-2" variant="outline">
-                          {userRole === "procurement-officer" ? "Manage" : "View Details"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && !error && filteredTenders.length === 0 && (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Tenders Found</h3>
+                    <p className="text-muted-foreground">
+                      {searchTerm 
+                        ? "No tenders match your search criteria. Try adjusting your search terms."
+                        : "There are currently no tenders available."}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Submissions Tab */}
@@ -794,26 +997,6 @@ export function TenderProcurementPortal() {
               </div>
             </TabsContent>
           </Tabs>
-
-          {/* Call to Action */}
-          {/* {userRole === "procurement-officer" && (
-            <Card className="mt-8 bg-green-50 border-green-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-green-900">Ready for detailed management?</h3>
-                    <p className="text-green-700">
-                      Access the full tender procurement dashboard with advanced features and comprehensive tools.
-                    </p>
-                  </div>
-                  <Button onClick={handleNavigateToDashboard} className="bg-green-600 hover:bg-green-700">
-                    Go to Full Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )} */}
         </div>
       </main>
     </div>

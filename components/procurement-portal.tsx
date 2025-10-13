@@ -36,6 +36,7 @@ import {
   BarChart,
   Shield,
   Target,
+  Loader2,
 } from "lucide-react"
 import { logout } from "@/lib/auth"
 
@@ -198,6 +199,7 @@ export function TenderProcurementPortal() {
   const [tenders, setTenders] = useState<Tender[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [applyingTender, setApplyingTender] = useState<string | null>(null)
 
   // Mock data for fallback
   const mockTenders: Tender[] = [
@@ -245,6 +247,51 @@ export function TenderProcurementPortal() {
       contactPerson: "Mike Brown",
       contactEmail: "mike.brown@company.com",
       documents: ["cleaning_contract.pdf", "specifications.pdf"]
+    },
+    {
+      id: "4",
+      title: "Security Systems Installation",
+      description: "Installation of comprehensive security systems across all corporate facilities.",
+      status: "open",
+      budget: 800000,
+      deadline: "2024-03-20",
+      submissions: 6,
+      category: "Security",
+      publishedDate: "2024-01-30",
+      requirements: ["Security license", "3+ years experience", "Maintenance plan"],
+      contactPerson: "David Wilson",
+      contactEmail: "david.wilson@company.com",
+      documents: ["security_specs.pdf", "requirements.pdf"]
+    },
+    {
+      id: "5",
+      title: "Software Development Services",
+      description: "Custom software development for enterprise resource planning system.",
+      status: "open",
+      budget: 2000000,
+      deadline: "2024-03-05",
+      submissions: 15,
+      category: "Software",
+      publishedDate: "2024-01-28",
+      requirements: ["Agile methodology", "5+ developers", "Quality assurance"],
+      contactPerson: "Lisa Chen",
+      contactEmail: "lisa.chen@company.com",
+      documents: ["software_rfp.pdf", "technical_requirements.pdf"]
+    },
+    {
+      id: "6",
+      title: "Catering Services",
+      description: "Daily catering services for employee cafeteria and corporate events.",
+      status: "open",
+      budget: 400000,
+      deadline: "2024-02-25",
+      submissions: 9,
+      category: "Food Services",
+      publishedDate: "2024-01-22",
+      requirements: ["Food safety certification", "Menu variety", "Event catering experience"],
+      contactPerson: "Maria Garcia",
+      contactEmail: "maria.garcia@company.com",
+      documents: ["catering_rfp.pdf", "menu_requirements.pdf"]
     }
   ]
 
@@ -297,15 +344,33 @@ export function TenderProcurementPortal() {
     fetchTenders()
   }
 
-  // Handle apply for tender
-  const handleApplyForTender = (tenderId: string) => {
-    // Navigate to application page or open application modal
-    window.location.href = `/portals/tender-procurement/apply/${tenderId}`
+  // Handle apply for tender with loading state
+  const handleApplyForTender = async (tenderId: string) => {
+    setApplyingTender(tenderId)
+    try {
+      // Simulate API call for application
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Navigate to application page or open application modal
+      window.location.href = `/portals/tender-procurement/apply/${tenderId}`
+    } catch (error) {
+      console.error('Error applying for tender:', error)
+      alert('Failed to apply for tender. Please try again.')
+    } finally {
+      setApplyingTender(null)
+    }
   }
 
   // Handle view tender details
   const handleViewTenderDetails = (tenderId: string) => {
     window.location.href = `/portals/tender-procurement/tenders/${tenderId}`
+  }
+
+  // Handle download tender documents
+  const handleDownloadDocuments = (tenderId: string, documentName: string) => {
+    // Simulate document download
+    console.log(`Downloading ${documentName} for tender ${tenderId}`)
+    alert(`Downloading ${documentName}...`)
   }
 
   const handleNavigateToDashboard = () => {
@@ -329,7 +394,8 @@ export function TenderProcurementPortal() {
       awarded: "default",
       open: "default",
       evaluation: "secondary",
-      draft: "outline"
+      draft: "outline",
+      closed: "outline"
     } as const
 
     const labels = {
@@ -339,7 +405,8 @@ export function TenderProcurementPortal() {
       awarded: "Awarded",
       open: "Open",
       evaluation: "Evaluation",
-      draft: "Draft"
+      draft: "Draft",
+      closed: "Closed"
     }
 
     return (
@@ -357,6 +424,11 @@ export function TenderProcurementPortal() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
+  }
+
+  // Check if tender deadline has passed
+  const isTenderExpired = (deadline: string) => {
+    return new Date(deadline) < new Date()
   }
 
   // Filter tenders based on search term - FIXED: Added safe array check
@@ -517,7 +589,10 @@ export function TenderProcurementPortal() {
                     <span>Download submission documents</span>
                   </div>
                 </div>
-                <Button className="bg-green-600 hover:bg-green-700 text-white w-full">
+                <Button 
+                  onClick={handleNavigateToSubmissions}
+                  className="bg-green-600 hover:bg-green-700 text-white w-full"
+                >
                   <BarChart className="mr-2 h-5 w-5" />
                   View My Submissions
                 </Button>
@@ -554,7 +629,7 @@ export function TenderProcurementPortal() {
                   variant={userRole === "procurement-officer" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setUserRole("procurement-officer")}
-                  className="text-xs h-8"
+                  className="text-xs h-8 px-2 sm:px-3"
                 >
                   Officer
                 </Button>
@@ -562,7 +637,7 @@ export function TenderProcurementPortal() {
                   variant={userRole === "bidder" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setUserRole("bidder")}
-                  className="text-xs h-8"
+                  className="text-xs h-8 px-2 sm:px-3"
                 >
                   Bidder
                 </Button>
@@ -645,15 +720,15 @@ export function TenderProcurementPortal() {
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="tenders">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="tenders" className="text-xs sm:text-sm">
                 {userRole === "procurement-officer" ? "My Tenders" : "Available Tenders"}
               </TabsTrigger>
-              <TabsTrigger value="submissions">
+              <TabsTrigger value="submissions" className="text-xs sm:text-sm">
                 {userRole === "procurement-officer" ? "Submissions" : "My Submissions"}
               </TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -727,7 +802,7 @@ export function TenderProcurementPortal() {
 
             {/* Tenders Tab */}
             <TabsContent value="tenders" className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold">
                     {userRole === "procurement-officer" ? "Tender Management" : "Available Tenders"}
@@ -739,7 +814,7 @@ export function TenderProcurementPortal() {
                   </p>
                 </div>
                 {userRole === "procurement-officer" && (
-                  <Button onClick={handleStartTenderRegistration} className="bg-green-600 hover:bg-green-700">
+                  <Button onClick={handleStartTenderRegistration} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Tender
                   </Button>
@@ -747,17 +822,17 @@ export function TenderProcurementPortal() {
               </div>
 
               {/* Search and Filter */}
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative flex-1 w-full">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder={userRole === "procurement-officer" ? "Search my tenders..." : "Search available tenders..."} 
-                    className="pl-10"
+                    className="pl-10 w-full"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Button variant="outline" className="bg-transparent">
+                <Button variant="outline" className="bg-transparent w-full sm:w-auto">
                   <Filter className="mr-2 h-4 w-4" />
                   Filter
                 </Button>
@@ -766,7 +841,7 @@ export function TenderProcurementPortal() {
               {/* Loading State */}
               {loading && (
                 <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2">Loading tenders...</span>
                 </div>
               )}
@@ -785,59 +860,110 @@ export function TenderProcurementPortal() {
 
               {/* Tenders Grid */}
               {!loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTenders.map((tender) => (
-                    <Card key={tender.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-lg">{tender.title}</CardTitle>
-                          {getStatusBadge(tender.status)}
-                        </div>
-                        <CardDescription>{tender.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Category</span>
-                            <span>{tender.category}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredTenders.map((tender) => {
+                    const isExpired = isTenderExpired(tender.deadline)
+                    const isApplying = applyingTender === tender.id
+                    
+                    return (
+                      <Card key={tender.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <CardTitle className="text-lg">{tender.title}</CardTitle>
+                            <div className="flex flex-col items-end gap-2">
+                              {getStatusBadge(tender.status)}
+                              {isExpired && (
+                                <Badge variant="outline" className="text-red-600 border-red-300">
+                                  Expired
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Budget</span>
-                            <span>{formatCurrency(tender.budget)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Submissions</span>
-                            <span>{tender.submissions}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Deadline</span>
-                            <span>{new Date(tender.deadline).toLocaleDateString()}</span>
-                          </div>
-                          
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 mt-4">
-                            <Button 
-                              variant="outline" 
-                              className="flex-1"
-                              onClick={() => handleViewTenderDetails(tender.id)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Button>
-                            {userRole === "bidder" && (
+                          <CardDescription className="line-clamp-2">{tender.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Category</span>
+                              <span>{tender.category}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Budget</span>
+                              <span>{formatCurrency(tender.budget)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Submissions</span>
+                              <span>{tender.submissions}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Deadline</span>
+                              <span>{new Date(tender.deadline).toLocaleDateString()}</span>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex flex-col sm:flex-row gap-2 mt-4">
                               <Button 
-                                className="flex-1 bg-green-600 hover:bg-green-700"
-                                onClick={() => handleApplyForTender(tender.id)}
+                                variant="outline" 
+                                className="flex-1"
+                                onClick={() => handleViewTenderDetails(tender.id)}
+                                disabled={isApplying}
                               >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Apply
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
                               </Button>
-                            )}
+                              {userRole === "bidder" && (
+                                <>
+                                  <Button 
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => handleDownloadDocuments(tender.id, "Tender Documents")}
+                                    disabled={isApplying || isExpired}
+                                  >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Documents
+                                  </Button>
+                                  <Button 
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                    onClick={() => handleApplyForTender(tender.id)}
+                                    disabled={isApplying || isExpired}
+                                  >
+                                    {isApplying ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Applying...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        {isExpired ? "Expired" : "Apply"}
+                                      </>
+                                    )}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Requirements Preview */}
+                            <div className="mt-3">
+                              <p className="text-sm font-medium mb-2">Key Requirements:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {tender.requirements.slice(0, 2).map((req, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {req}
+                                  </Badge>
+                                ))}
+                                {tender.requirements.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{tender.requirements.length - 2} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               )}
 
@@ -859,7 +985,7 @@ export function TenderProcurementPortal() {
 
             {/* Submissions Tab */}
             <TabsContent value="submissions" className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold">
                     {userRole === "procurement-officer" ? "Submission Management" : "My Submissions"}
@@ -870,7 +996,7 @@ export function TenderProcurementPortal() {
                       : "Track your tender applications and status"}
                   </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Download className="mr-2 h-4 w-4" />
                   Export Data
                 </Button>
@@ -891,7 +1017,7 @@ export function TenderProcurementPortal() {
                 <CardContent>
                   <div className="space-y-4">
                     {[1, 2, 3, 4].map((item) => (
-                      <div key={item} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={item} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
                         <div className="flex items-center space-x-4">
                           <div className="bg-primary/10 p-2 rounded-lg">
                             <FileText className="h-5 w-5 text-primary" />
@@ -931,12 +1057,12 @@ export function TenderProcurementPortal() {
 
             {/* Reports Tab */}
             <TabsContent value="reports" className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold">Reports & Analytics</h3>
                   <p className="text-muted-foreground">Generate insights and performance reports</p>
                 </div>
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
                   <PieChart className="mr-2 h-4 w-4" />
                   Generate Report
                 </Button>

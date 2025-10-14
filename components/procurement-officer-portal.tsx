@@ -33,6 +33,7 @@ import {
   Shield,
   Target,
   Loader2,
+  Sparkles,
 } from "lucide-react"
 
 // Types for tender data
@@ -50,6 +51,8 @@ interface Tender {
   contactPerson: string
   contactEmail: string
   documents: string[]
+  createdAt: string
+  isNew?: boolean
 }
 
 // Tender Registration Steps
@@ -91,6 +94,7 @@ export function ProcurementOfficerPortal() {
   const [tenders, setTenders] = useState<Tender[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tenderFilter, setTenderFilter] = useState<"all" | "new" | "active" | "closed">("all")
 
   // Fetch tenders from database
   const fetchTenders = async () => {
@@ -110,16 +114,29 @@ export function ProcurementOfficerPortal() {
 
       const data = await response.json()
       
+      let tenderData: Tender[] = []
+      
       if (Array.isArray(data)) {
-        setTenders(data)
+        tenderData = data
       } else if (data && Array.isArray(data.tenders)) {
-        setTenders(data.tenders)
+        tenderData = data.tenders
       } else if (data && Array.isArray(data.data)) {
-        setTenders(data.data)
+        tenderData = data.data
       } else {
         console.warn('Unexpected API response structure')
-        setTenders([])
+        tenderData = []
       }
+
+      // Mark tenders as new if created in the last 7 days
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      
+      const tendersWithNewFlag = tenderData.map((tender: Tender) => ({
+        ...tender,
+        isNew: new Date(tender.createdAt || tender.publishedDate) > oneWeekAgo
+      }))
+
+      setTenders(tendersWithNewFlag)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tenders')
       console.error('Error fetching tenders:', err)
@@ -128,6 +145,12 @@ export function ProcurementOfficerPortal() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (activeTab === "tenders") {
+      fetchTenders()
+    }
+  }, [activeTab])
 
   const handleBrowseTenders = () => {
     setActiveTab("tenders")
@@ -147,7 +170,7 @@ export function ProcurementOfficerPortal() {
     window.location.href = "/portals/tender-procurement"
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isNew?: boolean) => {
     const variants = {
       active: "default",
       new: "secondary",
@@ -171,9 +194,17 @@ export function ProcurementOfficerPortal() {
     }
 
     return (
-      <Badge variant={variants[status as keyof typeof variants]}>
-        {labels[status as keyof typeof labels]}
-      </Badge>
+      <div className="flex items-center gap-2">
+        {isNew && (
+          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+            <Sparkles className="h-3 w-3 mr-1" />
+            New
+          </Badge>
+        )}
+        <Badge variant={variants[status as keyof typeof variants]}>
+          {labels[status as keyof typeof labels]}
+        </Badge>
+      </div>
     )
   }
 
@@ -187,12 +218,24 @@ export function ProcurementOfficerPortal() {
     }).format(amount)
   }
 
-  // Filter tenders based on search term
-  const filteredTenders = Array.isArray(tenders) ? tenders.filter(tender =>
-    tender.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tender.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tender.category.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : []
+  // Filter tenders based on search term and selected filter
+  const filteredTenders = Array.isArray(tenders) ? tenders.filter(tender => {
+    const matchesSearch = 
+      tender.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tender.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tender.category.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesFilter = 
+      tenderFilter === "all" ? true :
+      tenderFilter === "new" ? tender.isNew :
+      tenderFilter === "active" ? ["active", "open", "evaluation"].includes(tender.status) :
+      tenderFilter === "closed" ? ["completed", "awarded", "closed"].includes(tender.status) : true
+
+    return matchesSearch && matchesFilter
+  }) : []
+
+  // Get newly created tenders (created in last 7 days)
+  const newTenders = Array.isArray(tenders) ? tenders.filter(tender => tender.isNew) : []
 
   return (
     <>
@@ -284,6 +327,72 @@ export function ProcurementOfficerPortal() {
           </CardContent>
         </Card>
       </div>
+
+      {/* New Tenders Quick Overview */}
+      {newTenders.length > 0 && (
+        <Card className="mb-6 border-l-4 border-l-green-500 bg-green-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-green-900">
+              <Sparkles className="h-5 w-5" />
+              Newly Created Tenders
+              <Badge variant="secondary" className="ml-2 bg-green-200 text-green-800">
+                {newTenders.length} new
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-green-700">
+              Recently published tender opportunities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {newTenders.slice(0, 3).map((tender) => (
+                <Card key={tender.id} className="bg-white border-green-200 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-sm line-clamp-2 flex-1 mr-2">{tender.title}</h4>
+                      <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-xs">
+                        New
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{tender.description}</p>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-green-600 font-medium">{formatCurrency(tender.budget)}</span>
+                      <span className="text-muted-foreground">
+                        {new Date(tender.deadline).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-3 text-xs"
+                      onClick={() => handleViewTenderDetails(tender.id)}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View Details
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {newTenders.length > 3 && (
+              <div className="mt-4 text-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setActiveTab("tenders")
+                    setTenderFilter("new")
+                  }}
+                  className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                >
+                  View All {newTenders.length} New Tenders
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tender Registration Progress (Only when active) */}
       {showTenderRegistration && (
@@ -389,10 +498,41 @@ export function ProcurementOfficerPortal() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="bg-transparent w-full sm:w-auto">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                variant={tenderFilter === "all" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTenderFilter("all")}
+                className="flex-1 sm:flex-none"
+              >
+                All
+              </Button>
+              <Button 
+                variant={tenderFilter === "new" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTenderFilter("new")}
+                className="flex-1 sm:flex-none"
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                New
+              </Button>
+              <Button 
+                variant={tenderFilter === "active" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTenderFilter("active")}
+                className="flex-1 sm:flex-none"
+              >
+                Active
+              </Button>
+              <Button 
+                variant={tenderFilter === "closed" ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setTenderFilter("closed")}
+                className="flex-1 sm:flex-none"
+              >
+                Closed
+              </Button>
+            </div>
           </div>
 
           {/* Loading State */}
@@ -423,7 +563,7 @@ export function ProcurementOfficerPortal() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{tender.title}</CardTitle>
-                      {getStatusBadge(tender.status)}
+                      {getStatusBadge(tender.status, tender.isNew)}
                     </div>
                     <CardDescription className="line-clamp-2">{tender.description}</CardDescription>
                   </CardHeader>
@@ -496,10 +636,18 @@ export function ProcurementOfficerPortal() {
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No Tenders Found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm 
-                    ? "No tenders match your search criteria. Try adjusting your search terms."
+                  {searchTerm || tenderFilter !== "all"
+                    ? "No tenders match your search criteria. Try adjusting your filters."
                     : "You haven't created any tenders yet."}
                 </p>
+                {tenderFilter === "new" && (
+                  <Button 
+                    onClick={() => setTenderFilter("all")}
+                    className="mt-4"
+                  >
+                    View All Tenders
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}

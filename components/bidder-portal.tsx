@@ -52,105 +52,6 @@ interface Tender {
   documents: string[]
 }
 
-// Mock data
-const quickStats = [
-  {
-    title: "Active Tenders",
-    value: "12",
-    change: "+3",
-    description: "From last month",
-    icon: FileText,
-    color: "text-primary",
-    bgColor: "bg-primary/10"
-  },
-  {
-    title: "My Submissions",
-    value: "5",
-    change: "+2",
-    description: "This quarter",
-    icon: Users,
-    color: "text-green-600",
-    bgColor: "bg-green-100"
-  },
-  {
-    title: "Pending Evaluation",
-    value: "3",
-    change: "-1",
-    description: "Awaiting review",
-    icon: Clock,
-    color: "text-orange-600",
-    bgColor: "bg-orange-100"
-  },
-  {
-    title: "Awarded Contracts",
-    value: "2",
-    change: "+1",
-    description: "This year",
-    icon: DollarSign,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100"
-  }
-]
-
-const recentActivities = [
-  {
-    id: 1,
-    type: "submission",
-    title: "Submission sent",
-    description: "IT Infrastructure Upgrade Project",
-    time: "2 hours ago",
-    status: "submitted"
-  },
-  {
-    id: 2,
-    type: "tender",
-    title: "New tender available",
-    description: "Office Furniture Supply",
-    time: "4 hours ago",
-    status: "new"
-  },
-  {
-    id: 3,
-    type: "evaluation",
-    title: "Evaluation completed",
-    description: "Cleaning Services tender",
-    time: "1 day ago",
-    status: "completed"
-  },
-  {
-    id: 4,
-    type: "contract",
-    title: "Contract awarded",
-    description: "Security Services - You won!",
-    time: "2 days ago",
-    status: "awarded"
-  }
-]
-
-const upcomingDeadlines = [
-  {
-    id: 1,
-    title: "IT Infrastructure Tender",
-    deadline: "2024-02-15",
-    submissions: 12,
-    status: "open"
-  },
-  {
-    id: 2,
-    title: "Software Development",
-    deadline: "2024-01-30",
-    submissions: 8,
-    status: "evaluation"
-  },
-  {
-    id: 3,
-    title: "Catering Services",
-    deadline: "2024-02-28",
-    submissions: 0,
-    status: "draft"
-  }
-]
-
 export function BidderPortal() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchTerm, setSearchTerm] = useState("")
@@ -158,54 +59,6 @@ export function BidderPortal() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [applyingTender, setApplyingTender] = useState<string | null>(null)
-
-  const mockTenders: Tender[] = [
-    {
-      id: "1",
-      title: "IT Infrastructure Upgrade",
-      description: "Comprehensive upgrade of IT infrastructure including servers, networking equipment, and security systems.",
-      status: "open",
-      budget: 1500000,
-      deadline: "2024-02-15",
-      submissions: 8,
-      category: "Technology",
-      publishedDate: "2024-01-15",
-      requirements: ["ISO 27001 Certification", "5+ years experience", "Technical proposal"],
-      contactPerson: "John Smith",
-      contactEmail: "john.smith@company.com",
-      documents: ["tender_doc_1.pdf", "technical_specs.pdf"]
-    },
-    {
-      id: "2",
-      title: "Office Furniture Supply",
-      description: "Supply and installation of modern office furniture for new headquarters.",
-      status: "open",
-      budget: 500000,
-      deadline: "2024-02-28",
-      submissions: 12,
-      category: "Furniture",
-      publishedDate: "2024-01-20",
-      requirements: ["Quality certification", "Environmental compliance", "Installation plan"],
-      contactPerson: "Sarah Johnson",
-      contactEmail: "sarah.j@company.com",
-      documents: ["furniture_specs.pdf", "requirements.pdf"]
-    },
-    {
-      id: "3",
-      title: "Cleaning Services Contract",
-      description: "Professional cleaning services for corporate offices on a monthly contract basis.",
-      status: "open",
-      budget: 300000,
-      deadline: "2024-03-10",
-      submissions: 5,
-      category: "Services",
-      publishedDate: "2024-01-25",
-      requirements: ["Cleaning certification", "Staff training records", "Insurance coverage"],
-      contactPerson: "Mike Brown",
-      contactEmail: "mike.brown@company.com",
-      documents: ["cleaning_contract.pdf", "specifications.pdf"]
-    }
-  ]
 
   // Fetch tenders from database
   const fetchTenders = async () => {
@@ -233,13 +86,13 @@ export function BidderPortal() {
       } else if (data && Array.isArray(data.data)) {
         setTenders(data.data)
       } else {
-        console.warn('Unexpected API response structure, using mock data')
-        setTenders(mockTenders)
+        console.warn('Unexpected API response structure')
+        setTenders([])
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tenders')
       console.error('Error fetching tenders:', err)
-      setTenders(mockTenders)
+      setTenders([])
     } finally {
       setLoading(false)
     }
@@ -443,24 +296,10 @@ export function BidderPortal() {
                 <CardDescription>Latest updates and actions in the system</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-4 p-3 border rounded-lg">
-                    <div className="flex-shrink-0">
-                      {activity.type === 'tender' && <FileText className="h-5 w-5 text-primary" />}
-                      {activity.type === 'submission' && <Upload className="h-5 w-5 text-green-600" />}
-                      {activity.type === 'evaluation' && <CheckCircle className="h-5 w-5 text-orange-600" />}
-                      {activity.type === 'contract' && <Building2 className="h-5 w-5 text-purple-600" />}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-sm">{activity.title}</p>
-                        {getStatusBadge(activity.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{activity.description}</p>
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No recent activity to display</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -471,30 +310,10 @@ export function BidderPortal() {
                 <CardDescription>Your submission deadlines</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {upcomingDeadlines.map((deadline) => (
-                  <div key={deadline.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-sm">{deadline.title}</p>
-                      {getStatusBadge(deadline.status)}
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>Closes: {new Date(deadline.deadline).toLocaleDateString()}</span>
-                      <span>{deadline.submissions} submissions</span>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span>Time remaining</span>
-                        <span>
-                          {Math.ceil((new Date(deadline.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.max(0, 100 - (Math.ceil((new Date(deadline.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) / 30) * 100)} 
-                        className="h-2" 
-                      />
-                    </div>
-                  </div>
-                ))}
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No upcoming deadlines</p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -687,33 +506,10 @@ export function BidderPortal() {
               <CardDescription>Your recent tender applications</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-primary/10 p-2 rounded-lg">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">My Submission {item}</p>
-                        <p className="text-sm text-muted-foreground">Tender: TND-2024-00{item}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="secondary">Submitted</Badge>
-                          <span className="text-xs text-muted-foreground">Submitted: 2024-01-{20 + item}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm">Track</Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8 text-muted-foreground">
+                <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No submissions found</p>
+                <p className="text-sm mt-2">Your submitted tender applications will appear here</p>
               </div>
             </CardContent>
           </Card>

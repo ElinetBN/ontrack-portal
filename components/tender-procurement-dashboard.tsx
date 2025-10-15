@@ -19,17 +19,20 @@ import { CalendarSidebar } from "./calendar-sidebar"
 // Import data and types
 import { initialTenders, initialSubmissions } from "../data/mock-data"
 import { useTenderManagement } from "../hooks/use-tender-management"
+import { Tender, Submission } from "../types"
 
 export function TenderProcurementDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const [selectedTenderInfo, setSelectedTenderInfo] = useState<any>(null)
+  const [selectedTenderInfo, setSelectedTenderInfo] = useState<Tender | null>(null)
   const [showTenderInfo, setShowTenderInfo] = useState(false)
 
   const {
     tenders,
     submissions,
     handleTenderCreate,
+    handleTenderUpdate,
+    handleTenderDelete,
     handleDocumentsUpdate,
     handleEvaluationComplete,
     handleTenderStatusChange
@@ -38,7 +41,7 @@ export function TenderProcurementDashboard() {
   // Mock user role - you can replace this with actual authentication logic
   const [userRole] = useState<'admin' | 'super_admin' | 'user'>('super_admin')
 
-  const handleReviewClick = (submission: any) => {
+  const handleReviewClick = (submission: Submission) => {
     const tender = tenders.find(t => t.id === submission.tenderId)
     if (tender) {
       setSelectedTenderInfo(tender)
@@ -53,9 +56,9 @@ export function TenderProcurementDashboard() {
       const tenderWithRole = {
         ...tenderData,
         createdBy: userRole,
-        createdAt: new Date().toISOString(),
-        // Add draft/published status based on user role and action
-        status: userRole === 'super_admin' && tenderData.status === 'published' ? 'published' : 'draft',
+        createdDate: new Date().toISOString(),
+        // Set status based on user role and action
+        status: userRole === 'super_admin' && tenderData.status === 'published' ? 'Open' : 'Draft',
         requiresApproval: userRole !== 'super_admin'
       }
 
@@ -73,6 +76,31 @@ export function TenderProcurementDashboard() {
       console.error('Error creating tender:', error)
       throw error
     }
+  }
+
+  // Handle tender deletion
+  const handleTenderDeleteWithConfirmation = (tenderId: string) => {
+    if (window.confirm('Are you sure you want to delete this tender? This action cannot be undone.')) {
+      handleTenderDelete(tenderId)
+      console.log('Tender deleted:', tenderId)
+    }
+  }
+
+  // Handle tender publishing
+  const handleTenderPublish = (tenderId: string) => {
+    const tender = tenders.find(t => t.id === tenderId)
+    if (tender && tender.status === "Draft") {
+      handleTenderUpdate(tenderId, { ...tender, status: "Open" })
+      console.log('Tender published:', tenderId)
+    }
+  }
+
+  // Handle tender editing
+  const handleTenderEdit = (tender: Tender) => {
+    // For now, we'll open the registration popup with the tender data
+    // You might want to implement a separate edit popup
+    setSelectedTenderInfo(tender)
+    setIsRegistrationOpen(true)
   }
 
   // Calendar Sidebar Handlers
@@ -112,13 +140,14 @@ export function TenderProcurementDashboard() {
   }
 
   // Handle tender info click from various components
-  const handleTenderInfoClick = (tender: any) => {
+  const handleTenderInfoClick = (tender: Tender) => {
     setSelectedTenderInfo(tender)
     setShowTenderInfo(true)
   }
 
   // Handle new tender creation from various components
   const handleNewTenderClick = () => {
+    setSelectedTenderInfo(null) // Clear any selected tender for new creation
     setIsRegistrationOpen(true)
   }
 
@@ -154,9 +183,11 @@ export function TenderProcurementDashboard() {
                   tenders={tenders}
                   submissions={submissions}
                   onTenderCreate={handleNewTenderClick}
+                  onTenderEdit={handleTenderEdit}
                   onTenderInfoClick={handleTenderInfoClick}
                   onReviewClick={handleReviewClick}
-                  userRole={userRole}
+                  onTenderDelete={handleTenderDeleteWithConfirmation}
+                  onTenderPublish={handleTenderPublish}
                 />
               </div>
 
@@ -178,7 +209,10 @@ export function TenderProcurementDashboard() {
             <TendersTab 
               tenders={tenders}
               onTenderCreate={handleNewTenderClick}
+              onTenderEdit={handleTenderEdit}
               onTenderInfoClick={handleTenderInfoClick}
+              onTenderDelete={handleTenderDeleteWithConfirmation}
+              onTenderPublish={handleTenderPublish}
               userRole={userRole}
             />
           </TabsContent>
@@ -228,6 +262,7 @@ export function TenderProcurementDashboard() {
         onClose={() => setIsRegistrationOpen(false)}
         onTenderCreate={handleTenderCreateWithRole}
         userRole={userRole}
+        editTender={selectedTenderInfo} // Pass the tender to edit if available
       />
 
       {/* Tender Info Popup */}
@@ -235,6 +270,9 @@ export function TenderProcurementDashboard() {
         isOpen={showTenderInfo}
         onClose={() => setShowTenderInfo(false)}
         tender={selectedTenderInfo}
+        onEditTender={handleTenderEdit}
+        onDeleteTender={handleTenderDeleteWithConfirmation}
+        onPublishTender={handleTenderPublish}
       />
 
       {/* User Role Badge in Corner (optional) */}

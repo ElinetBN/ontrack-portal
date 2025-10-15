@@ -25,6 +25,9 @@ export interface Tender {
   submissionMethod: string;
   tenderFee: string;
   advertisementLink: string;
+  isDraft?: boolean;
+  createdBy?: string;
+  requiresApproval?: boolean;
 }
 
 export interface Submission {
@@ -39,6 +42,13 @@ export interface Submission {
   score?: number;
   submittedAt: string;
   evaluation?: any;
+  tenderTitle?: string;
+  companyName?: string;
+  submissionDate?: string;
+  lastUpdated?: string;
+  bidAmount?: string;
+  submittedDate?: string;
+  notes?: string;
 }
 
 // API Client functions
@@ -123,7 +133,113 @@ class TenderAPI {
 
     return response.json();
   }
+
+  static async deleteTender(id: string) {
+    try {
+      console.log('Deleting tender with ID:', id);
+      const response = await fetch(`${this.baseURL}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      console.log('Delete response status:', response.status);
+      
+      if (!response.ok) {
+        let errorMessage = `Failed to delete tender: ${response.status} ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (jsonError) {
+          console.log('Response is not JSON, using status text');
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        console.log('Delete successful (no content returned)');
+        return { success: true, message: 'Tender deleted successfully' };
+      }
+
+      try {
+        const result = await response.json();
+        console.log('Delete response JSON:', result);
+        return result;
+      } catch (jsonError) {
+        console.log('No JSON response for delete, returning success');
+        return { success: true, message: 'Tender deleted successfully' };
+      }
+    } catch (error) {
+      console.error('Error in deleteTender:', error);
+      throw error;
+    }
+  }
 }
+
+// Helper function to safely extract numeric value from budget string
+const extractBudgetValue = (budget: string | number | undefined | null): number => {
+  if (typeof budget === 'number') {
+    return budget;
+  }
+  
+  if (!budget) {
+    return 0;
+  }
+  
+  try {
+    const numericString = budget.toString().replace(/[^0-9]/g, '');
+    return parseInt(numericString) || 0;
+  } catch (error) {
+    console.warn('Error parsing budget:', budget, error);
+    return 0;
+  }
+};
+
+// Helper function to format budget with currency
+const formatBudget = (value: number | string | undefined | null, currency: string = 'ZAR'): string => {
+  const numericValue = typeof value === 'number' ? value : extractBudgetValue(value);
+  return `${currency} ${numericValue?.toLocaleString() || '0'}`;
+};
+
+// Helper function to safely extract contact person name
+const extractContactPerson = (contactPerson: any): string => {
+  if (typeof contactPerson === 'string') {
+    return contactPerson;
+  }
+  
+  if (contactPerson && typeof contactPerson === 'object') {
+    return contactPerson.name || contactPerson.fullName || '';
+  }
+  
+  return '';
+};
+
+// Helper function to safely extract contact email
+const extractContactEmail = (contactPerson: any): string => {
+  if (typeof contactPerson === 'string') {
+    return '';
+  }
+  
+  if (contactPerson && typeof contactPerson === 'object') {
+    return contactPerson.email || '';
+  }
+  
+  return '';
+};
+
+// Helper function to safely extract contact phone
+const extractContactPhone = (contactPerson: any): string => {
+  if (typeof contactPerson === 'string') {
+    return '';
+  }
+  
+  if (contactPerson && typeof contactPerson === 'object') {
+    return contactPerson.phone || contactPerson.phoneNumber || '';
+  }
+  
+  return '';
+};
 
 // Helper function to map API tender data to your dashboard format
 const mapApiTenderToDashboard = (apiTender: any): Tender => {
@@ -133,71 +249,227 @@ const mapApiTenderToDashboard = (apiTender: any): Tender => {
     'closed': 'Closed',
     'awarded': 'Awarded',
     'pending': 'Draft',
-    'cancelled': 'Closed'
+    'cancelled': 'Closed',
+    'draft': 'Draft'
   };
 
-  // Format budget with currency
-  const formatBudget = (value: number, currency: string = 'ZAR') => {
-    return `${currency} ${value?.toLocaleString() || '0'}`;
-  };
+  // Safely handle budget value
+  const budgetValue = apiTender.value || apiTender.budget || 0;
+  const formattedBudget = formatBudget(budgetValue, apiTender.currency);
+
+  // Safely extract contact information
+  const contactPerson = extractContactPerson(apiTender.contactPerson);
+  const contactEmail = extractContactEmail(apiTender.contactPerson) || apiTender.contactEmail || '';
+  const contactPhone = extractContactPhone(apiTender.contactPerson) || apiTender.contactPhone || '';
 
   return {
-    id: apiTender._id || apiTender.id,
+    id: apiTender._id || apiTender.id || `temp-${Date.now()}`,
     title: apiTender.title || 'Untitled Tender',
-    department: apiTender.organization || 'General',
+    department: apiTender.organization || apiTender.department || 'General',
     status: statusMap[apiTender.status] || 'Draft',
-    deadline: apiTender.closingDate || new Date().toISOString(),
-    budget: formatBudget(apiTender.value, apiTender.currency),
-    submissions: 0, // This will be calculated separately
+    deadline: apiTender.closingDate || apiTender.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    budget: formattedBudget,
+    submissions: apiTender.submissions || 0,
     category: apiTender.category || 'General',
     description: apiTender.description || '',
-    referenceNumber: apiTender.tenderNumber || `TND-${Date.now()}`,
-    requestedItems: apiTender.requirements || [],
-    createdDate: apiTender.createdAt || apiTender.publishDate || new Date().toISOString(),
+    referenceNumber: apiTender.tenderNumber || apiTender.referenceNumber || `TND-${Date.now()}`,
+    requestedItems: apiTender.requirements || apiTender.requestedItems || [],
+    createdDate: apiTender.createdAt || apiTender.publishDate || apiTender.createdDate || new Date().toISOString(),
     location: apiTender.location || '',
-    contractPeriod: '',
-    cidbGrading: '',
-    bbbeeLevel: '',
-    contactPerson: apiTender.contactPerson?.name || '',
-    contactEmail: apiTender.contactPerson?.email || '',
-    contactPhone: apiTender.contactPerson?.phone || '',
-    submissionMethod: 'online',
-    tenderFee: 'No fee',
-    advertisementLink: `https://example.gov.za/tenders/${apiTender.tenderNumber || apiTender._id}`
+    contractPeriod: apiTender.contractPeriod || '',
+    cidbGrading: apiTender.cidbGrading || '',
+    bbbeeLevel: apiTender.bbbeeLevel || '',
+    contactPerson: contactPerson,
+    contactEmail: contactEmail,
+    contactPhone: contactPhone,
+    submissionMethod: apiTender.submissionMethod || 'online',
+    tenderFee: apiTender.tenderFee || 'No fee',
+    advertisementLink: apiTender.advertisementLink || `https://example.gov.za/tenders/${apiTender.tenderNumber || apiTender._id || apiTender.id}`,
+    isDraft: apiTender.status === 'draft' || apiTender.status === 'pending' || apiTender.isDraft === true,
+    createdBy: apiTender.createdBy,
+    requiresApproval: apiTender.requiresApproval
   };
 };
 
-// Mock submissions data (you can replace this with real API later)
+// Helper function to map dashboard tender to API format
+const mapDashboardTenderToApi = (tender: Tender): any => {
+  const statusMap: { [key: string]: string } = {
+    'Open': 'open',
+    'Closed': 'closed',
+    'Awarded': 'awarded',
+    'Draft': 'draft',
+    'Evaluation': 'open'
+  };
+
+  // Safely extract numeric value from budget string
+  const budgetValue = extractBudgetValue(tender.budget);
+
+  return {
+    title: tender.title || 'Untitled Tender',
+    description: tender.description || '',
+    organization: tender.department || 'General',
+    category: tender.category || 'General',
+    value: budgetValue,
+    currency: 'ZAR',
+    status: statusMap[tender.status] || 'draft',
+    closingDate: tender.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    location: tender.location || '',
+    tenderNumber: tender.referenceNumber || `TND-${Date.now()}`,
+    requirements: tender.requestedItems || [],
+    contractPeriod: tender.contractPeriod || '',
+    cidbGrading: tender.cidbGrading || '',
+    bbbeeLevel: tender.bbbeeLevel || '',
+    contactPerson: {
+      name: tender.contactPerson || '',
+      email: tender.contactEmail || '',
+      phone: tender.contactPhone || ''
+    },
+    submissionMethod: tender.submissionMethod || 'online',
+    tenderFee: tender.tenderFee || 'No fee',
+    advertisementLink: tender.advertisementLink || ''
+  };
+};
+
+// Mock submissions data
 const mockSubmissions: Submission[] = [
   {
     id: '1',
     tenderId: '1',
     supplier: 'ABC Construction',
     company: 'ABC Construction Ltd',
+    companyName: 'ABC Construction Ltd',
     proposal: 'Comprehensive maintenance proposal',
     amount: 150000,
+    bidAmount: 'R 150,000',
     documents: [],
     status: 'under_review',
     score: 85,
     submittedAt: new Date('2024-01-15').toISOString(),
+    submissionDate: new Date('2024-01-15').toISOString(),
+    submittedDate: new Date('2024-01-15').toISOString(),
+    lastUpdated: new Date('2024-01-15').toISOString(),
+    tenderTitle: 'Road Maintenance Contract'
   },
   {
     id: '2',
     tenderId: '1',
     supplier: 'XYZ Services',
     company: 'XYZ Services Pty Ltd',
+    companyName: 'XYZ Services Pty Ltd',
     proposal: 'Alternative maintenance approach',
     amount: 120000,
+    bidAmount: 'R 120,000',
     documents: [],
     status: 'submitted',
     submittedAt: new Date('2024-01-10').toISOString(),
+    submissionDate: new Date('2024-01-10').toISOString(),
+    submittedDate: new Date('2024-01-10').toISOString(),
+    lastUpdated: new Date('2024-01-10').toISOString(),
+    tenderTitle: 'Road Maintenance Contract'
+  },
+  {
+    id: '3',
+    tenderId: '2',
+    supplier: 'Tech Solutions Inc',
+    company: 'Tech Solutions Inc',
+    companyName: 'Tech Solutions Inc',
+    proposal: 'IT infrastructure upgrade proposal',
+    amount: 250000,
+    bidAmount: 'R 250,000',
+    documents: [],
+    status: 'under_review',
+    score: 92,
+    submittedAt: new Date('2024-01-20').toISOString(),
+    submissionDate: new Date('2024-01-20').toISOString(),
+    submittedDate: new Date('2024-01-20').toISOString(),
+    lastUpdated: new Date('2024-01-20').toISOString(),
+    tenderTitle: 'IT Equipment Supply'
   }
 ];
 
-export function useTenderManagement(initialTenders: Tender[] = [], initialSubmissions: Submission[] = []) {
+// Mock initial tenders data
+const mockTenders: Tender[] = [
+  {
+    id: '1',
+    title: 'Road Maintenance Contract',
+    department: 'Public Works',
+    status: 'Open',
+    deadline: '2024-12-31',
+    budget: 'R 5,000,000',
+    submissions: 2,
+    category: 'Construction',
+    description: 'Annual road maintenance and repair services for municipal roads',
+    referenceNumber: 'PW-2024-001',
+    requestedItems: ['Asphalt', 'Road marking', 'Drainage maintenance'],
+    createdDate: '2024-01-15',
+    location: 'City Wide',
+    contractPeriod: '12 months',
+    cidbGrading: '7CE',
+    bbbeeLevel: 'Level 2',
+    contactPerson: 'John Smith',
+    contactEmail: 'john.smith@publicworks.gov.za',
+    contactPhone: '+27 11 123 4567',
+    submissionMethod: 'Online Portal',
+    tenderFee: 'No fee',
+    advertisementLink: 'https://example.gov.za/tenders/PW-2024-001',
+    isDraft: false
+  },
+  {
+    id: '2',
+    title: 'IT Equipment Supply',
+    department: 'ICT',
+    status: 'Open',
+    deadline: '2024-11-30',
+    budget: 'R 2,500,000',
+    submissions: 1,
+    category: 'Technology',
+    description: 'Supply of computers, servers and network equipment for government offices',
+    referenceNumber: 'ICT-2024-002',
+    requestedItems: ['Laptops', 'Servers', 'Network Equipment'],
+    createdDate: '2024-01-10',
+    location: 'Head Office',
+    contractPeriod: '6 months',
+    cidbGrading: 'N/A',
+    bbbeeLevel: 'Level 1',
+    contactPerson: 'Sarah Johnson',
+    contactEmail: 'sarah.johnson@ict.gov.za',
+    contactPhone: '+27 11 234 5678',
+    submissionMethod: 'Email Submission',
+    tenderFee: 'R 500',
+    advertisementLink: 'https://example.gov.za/tenders/ICT-2024-002',
+    isDraft: false
+  },
+  {
+    id: '3',
+    title: 'Office Cleaning Services',
+    department: 'Facilities Management',
+    status: 'Draft',
+    deadline: '2024-10-15',
+    budget: 'R 800,000',
+    submissions: 0,
+    category: 'Services',
+    description: 'Daily cleaning services for government building complex',
+    referenceNumber: 'FM-2024-003',
+    requestedItems: ['Cleaning equipment', 'Sanitary supplies', 'Staff uniforms'],
+    createdDate: '2024-01-20',
+    location: 'Government Complex',
+    contractPeriod: '24 months',
+    cidbGrading: '1GB',
+    bbbeeLevel: 'Level 4',
+    contactPerson: 'Mike Brown',
+    contactEmail: 'mike.brown@facilities.gov.za',
+    contactPhone: '+27 11 345 6789',
+    submissionMethod: 'Online Portal',
+    tenderFee: 'No fee',
+    advertisementLink: '',
+    isDraft: true
+  }
+];
+
+export function useTenderManagement(initialTenders: Tender[] = mockTenders, initialSubmissions: Submission[] = mockSubmissions) {
   const [tenders, setTenders] = useState<Tender[]>(initialTenders);
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch tenders from API on mount
@@ -207,30 +479,34 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
       setError(null);
       console.log('Starting data fetch...');
       
-      // Fetch tenders from API
-      const tenderResponse = await TenderAPI.getTenders({ limit: 100 });
-      console.log('Tender response received:', tenderResponse);
-      
-      if (tenderResponse.success && tenderResponse.data) {
-        // Map API data to your dashboard format
-        const mappedTenders = tenderResponse.data.map((apiTender: any) => 
-          mapApiTenderToDashboard(apiTender)
-        );
-        console.log('Mapped tenders:', mappedTenders);
-        setTenders(mappedTenders);
-      } else {
-        console.warn('Tender API response indicates failure:', tenderResponse);
+      // Try to fetch tenders from API first
+      try {
+        const tenderResponse = await TenderAPI.getTenders({ limit: 100 });
+        console.log('Tender response received:', tenderResponse);
+        
+        if (tenderResponse.success && tenderResponse.data) {
+          // Map API data to your dashboard format
+          const mappedTenders = tenderResponse.data.map((apiTender: any) => 
+            mapApiTenderToDashboard(apiTender)
+          );
+          console.log('Mapped tenders:', mappedTenders);
+          setTenders(mappedTenders);
+        } else {
+          console.warn('Tender API response indicates failure, using mock data');
+          setTenders(initialTenders);
+        }
+      } catch (apiError) {
+        console.warn('API fetch failed, using mock data:', apiError);
         setTenders(initialTenders);
       }
 
-      // For now, use mock submissions - you can replace with real API later
+      // Use mock submissions
       console.log('Using mock submissions data');
       setSubmissions(mockSubmissions);
 
     } catch (err: any) {
       console.error('Error in fetchData:', err);
       setError(err.message || 'Failed to load data from server');
-      // Fallback to initial data if API fails
       setTenders(initialTenders);
       setSubmissions(initialSubmissions);
     } finally {
@@ -249,39 +525,42 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
       setLoading(true);
       setError(null);
 
-      // Prepare data for API
-      const apiTenderData = {
-        tenderNumber: tenderData.tenderNumber || `TND-${Date.now()}`,
-        title: tenderData.title,
-        description: tenderData.description || '',
-        organization: tenderData.organization || 'University Procurement',
-        category: tenderData.category || '',
-        value: tenderData.value || 0,
-        currency: tenderData.currency || 'ZAR',
-        status: 'open',
-        publishDate: new Date(),
-        closingDate: new Date(tenderData.closingDate),
-        location: tenderData.location || '',
-        contactPerson: tenderData.contactPerson || {},
-        requirements: tenderData.requirements || [],
-        tags: tenderData.tags || [],
-        metadata: {
-          source: 'web-portal',
-          lastUpdated: new Date(),
-          createdBy: 'system-user'
-        }
+      // Ensure tenderData has all required fields with defaults
+      const completeTenderData = {
+        ...tenderData,
+        budget: tenderData.budget || 'R 0',
+        submissions: 0,
+        createdDate: new Date().toISOString(),
+        status: tenderData.status || 'Draft',
+        contactPerson: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.name : tenderData.contactPerson || '',
+        contactEmail: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.email : tenderData.contactEmail || '',
+        contactPhone: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.phone : tenderData.contactPhone || ''
       };
 
+      // Prepare data for API
+      const apiTenderData = mapDashboardTenderToApi(completeTenderData);
+
       console.log('Creating tender with data:', apiTenderData);
-      const response = await TenderAPI.createTender(apiTenderData);
       
-      if (response.success) {
-        // Map the created tender to dashboard format and add to state
-        const newTender = mapApiTenderToDashboard(response.data);
+      try {
+        const response = await TenderAPI.createTender(apiTenderData);
+        
+        if (response.success) {
+          const newTender = mapApiTenderToDashboard(response.data);
+          setTenders(prev => [newTender, ...prev]);
+          return newTender;
+        } else {
+          throw new Error(response.message || 'Failed to create tender');
+        }
+      } catch (apiError) {
+        console.warn('API create failed, creating locally:', apiError);
+        // Create tender locally if API fails
+        const newTender: Tender = {
+          id: Date.now().toString(),
+          ...completeTenderData
+        };
         setTenders(prev => [newTender, ...prev]);
         return newTender;
-      } else {
-        throw new Error(response.message || 'Failed to create tender');
       }
     } catch (err: any) {
       console.error('Error in handleTenderCreate:', err);
@@ -292,29 +571,113 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
     }
   }, []);
 
+  const handleTenderUpdate = useCallback(async (tenderId: string, updatedData: Partial<Tender>) => {
+    try {
+      setError(null);
+
+      // Ensure contact fields are properly handled
+      const safeUpdatedData = {
+        ...updatedData,
+        budget: updatedData.budget || 'R 0',
+        contactPerson: typeof updatedData.contactPerson === 'object' ? (updatedData.contactPerson as any).name : updatedData.contactPerson || '',
+        contactEmail: typeof updatedData.contactPerson === 'object' ? (updatedData.contactPerson as any).email : updatedData.contactEmail || '',
+        contactPhone: typeof updatedData.contactPerson === 'object' ? (updatedData.contactPerson as any).phone : updatedData.contactPhone || ''
+      };
+
+      const apiData = mapDashboardTenderToApi(safeUpdatedData as Tender);
+      
+      try {
+        const response = await TenderAPI.updateTender(tenderId, apiData);
+
+        if (response.success) {
+          setTenders(prev =>
+            prev.map(tender =>
+              tender.id === tenderId
+                ? { ...tender, ...safeUpdatedData }
+                : tender
+            )
+          );
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn('API update failed, updating locally:', apiError);
+        setTenders(prev =>
+          prev.map(tender =>
+            tender.id === tenderId
+              ? { ...tender, ...safeUpdatedData }
+              : tender
+          )
+        );
+        return { success: true, message: 'Tender updated locally' };
+      }
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  const handleTenderDelete = useCallback(async (tenderId: string) => {
+    try {
+      setError(null);
+      console.log('Deleting tender:', tenderId);
+
+      try {
+        const response = await TenderAPI.deleteTender(tenderId);
+        console.log('Delete API response:', response);
+      } catch (apiError) {
+        console.warn('API delete failed, deleting locally:', apiError);
+      }
+
+      // Always update local state regardless of API response
+      setTenders(prev => prev.filter(tender => tender.id !== tenderId));
+      setSubmissions(prev => prev.filter(submission => submission.tenderId !== tenderId));
+      
+      return { success: true, message: 'Tender deleted successfully' };
+      
+    } catch (err: any) {
+      console.error('Error in handleTenderDelete:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
   const handleTenderStatusChange = useCallback(async (tenderId: string, newStatus: string) => {
     try {
       setError(null);
 
-      // Map dashboard status back to API status
       const statusMap: { [key: string]: string } = {
         'Open': 'open',
         'Closed': 'closed',
         'Awarded': 'awarded',
-        'Draft': 'pending',
+        'Draft': 'draft',
         'Evaluation': 'open'
       };
 
       const apiStatus = statusMap[newStatus] || newStatus.toLowerCase();
 
-      const response = await TenderAPI.updateTender(tenderId, { 
-        status: apiStatus,
-        metadata: {
-          lastUpdated: new Date()
-        }
-      });
+      try {
+        const response = await TenderAPI.updateTender(tenderId, { 
+          status: apiStatus,
+          metadata: {
+            lastUpdated: new Date()
+          }
+        });
 
-      if (response.success) {
+        if (response.success) {
+          setTenders(prev =>
+            prev.map(tender =>
+              tender.id === tenderId
+                ? { 
+                    ...tender, 
+                    status: newStatus as any
+                  }
+                : tender
+            )
+          );
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn('API status change failed, updating locally:', apiError);
         setTenders(prev =>
           prev.map(tender =>
             tender.id === tenderId
@@ -325,7 +688,56 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
               : tender
           )
         );
-        return response.data;
+        return { success: true, message: 'Status updated locally' };
+      }
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  const handleTenderPublish = useCallback(async (tenderId: string) => {
+    try {
+      setError(null);
+      
+      try {
+        const response = await TenderAPI.updateTender(tenderId, { 
+          status: 'open',
+          publishDate: new Date(),
+          metadata: {
+            lastUpdated: new Date(),
+            published: true
+          }
+        });
+
+        if (response.success) {
+          setTenders(prev =>
+            prev.map(tender =>
+              tender.id === tenderId
+                ? { 
+                    ...tender, 
+                    status: 'Open' as const,
+                    isDraft: false
+                  }
+                : tender
+            )
+          );
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn('API publish failed, publishing locally:', apiError);
+        setTenders(prev =>
+          prev.map(tender =>
+            tender.id === tenderId
+              ? { 
+                  ...tender, 
+                  status: 'Open' as const,
+                  isDraft: false
+                }
+              : tender
+          )
+        );
+        return { success: true, message: 'Tender published locally' };
       }
     } catch (err: any) {
       setError(err.message);
@@ -336,7 +748,6 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
   const handleDocumentsUpdate = useCallback(async (submissionId: string, documents: any[]) => {
     try {
       setError(null);
-      // Update submission documents
       setSubmissions(prev =>
         prev.map(submission =>
           submission.id === submissionId
@@ -360,7 +771,7 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
             ? { 
                 ...submission, 
                 score,
-                status: 'evaluated' as any
+                status: status as any
               }
             : submission
         )
@@ -387,7 +798,10 @@ export function useTenderManagement(initialTenders: Tender[] = [], initialSubmis
     
     // Tender operations
     handleTenderCreate,
+    handleTenderUpdate,
+    handleTenderDelete,
     handleTenderStatusChange,
+    handleTenderPublish,
     refreshTenders,
     
     // Submission operations

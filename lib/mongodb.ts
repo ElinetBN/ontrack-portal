@@ -1,4 +1,3 @@
-// lib/mongodb.ts - MongoDB connection utility
 import mongoose from 'mongoose';
 
 const MONGO_URI = process.env.MONGO_URI!;
@@ -24,15 +23,26 @@ if (!global.mongoose) {
 
 export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
+    console.log('Using cached MongoDB connection');
     return cached.conn;
   }
 
   if (!cached.promise) {
+    console.log('Creating new MongoDB connection');
     const opts = {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGO_URI, opts);
+    cached.promise = mongoose.connect(MONGO_URI, opts)
+      .then((mongoose) => {
+        console.log('MongoDB connected successfully');
+        return mongoose;
+      })
+      .catch((error) => {
+        console.error('MongoDB connection error:', error);
+        cached.promise = null;
+        throw error;
+      });
   }
 
   try {
@@ -43,4 +53,9 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   return cached.conn;
+}
+
+// Helper function to check connection status
+export function getConnectionStatus(): string {
+  return mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
 }

@@ -1,22 +1,29 @@
-// app/api/tenders/[id]/route.ts - GET, PUT, PATCH, DELETE by ID
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Tender } from '@/models/Tender';
+import Tender from '@/models/Tender';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+interface Params {
+  params: {
+    id: string;
+  };
+}
+
+// GET /api/tenders/[id] - Get a specific tender
+export async function GET(request: NextRequest, { params }: Params) {
   try {
     await connectDB();
+    
+    const { id } = params;
+    
+    console.log('Fetching tender with ID:', id);
 
-    const tender = await Tender.findById(params.id);
+    const tender = await Tender.findById(id);
 
     if (!tender) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Tender not found',
+        { 
+          success: false, 
+          message: 'Tender not found' 
         },
         { status: 404 }
       );
@@ -24,44 +31,49 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: tender,
+      data: tender
     });
+
   } catch (error: any) {
     console.error('Error fetching tender:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Error fetching tender',
-        error: error.message,
+      { 
+        success: false, 
+        message: 'Failed to fetch tender',
+        error: error.message 
       },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// PATCH /api/tenders/[id] - Update a tender
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     await connectDB();
+    
+    const { id } = params;
+    const updateData = await request.json();
 
-    const body = await request.json();
+    console.log('Updating tender:', id, 'with data:', updateData);
+
+    // Add metadata update
+    const updatedData = {
+      ...updateData,
+      'metadata.lastUpdated': new Date()
+    };
 
     const tender = await Tender.findByIdAndUpdate(
-      params.id,
-      {
-        ...body,
-        'metadata.lastUpdated': new Date(),
-      },
+      id,
+      updatedData,
       { new: true, runValidators: true }
     );
 
     if (!tender) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Tender not found',
+        { 
+          success: false, 
+          message: 'Tender not found' 
         },
         { status: 404 }
       );
@@ -70,46 +82,51 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: 'Tender updated successfully',
-      data: tender,
+      data: tender
     });
+
   } catch (error: any) {
     console.error('Error updating tender:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Validation failed',
+          errors 
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Error updating tender',
-        error: error.message,
+      { 
+        success: false, 
+        message: 'Failed to update tender',
+        error: error.message 
       },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// DELETE /api/tenders/[id] - Delete a tender
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     await connectDB();
+    
+    const { id } = params;
 
-    const body = await request.json();
+    console.log('Deleting tender:', id);
 
-    const tender = await Tender.findByIdAndUpdate(
-      params.id,
-      {
-        $set: {
-          ...body,
-          'metadata.lastUpdated': new Date(),
-        },
-      },
-      { new: true, runValidators: true }
-    );
+    const tender = await Tender.findByIdAndDelete(id);
 
     if (!tender) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Tender not found',
+        { 
+          success: false, 
+          message: 'Tender not found' 
         },
         { status: 404 }
       );
@@ -117,53 +134,16 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      message: 'Tender updated successfully',
-      data: tender,
+      message: 'Tender deleted successfully'
     });
-  } catch (error: any) {
-    console.error('Error updating tender:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Error updating tender',
-        error: error.message,
-      },
-      { status: 400 }
-    );
-  }
-}
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectDB();
-
-    const tender = await Tender.findByIdAndDelete(params.id);
-
-    if (!tender) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Tender not found',
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Tender deleted successfully',
-      data: tender,
-    });
   } catch (error: any) {
     console.error('Error deleting tender:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Error deleting tender',
-        error: error.message,
+      { 
+        success: false, 
+        message: 'Failed to delete tender',
+        error: error.message 
       },
       { status: 500 }
     );

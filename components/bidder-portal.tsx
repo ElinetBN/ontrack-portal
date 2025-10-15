@@ -6,34 +6,26 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import {
   FileText,
   Users,
-  Building2,
   Search,
   Filter,
-  Plus,
   Download,
   Clock,
   CheckCircle,
-  AlertCircle,
   Calendar,
   DollarSign,
   PieChart,
   BarChart3,
-  ArrowRight,
   Upload,
   Eye,
-  Edit,
-  Trash2,
-  FileUp,
-  UserCheck,
-  BarChart,
-  Shield,
-  Target,
   Loader2,
+  BarChart,
+  AlertCircle,
 } from "lucide-react"
+import { TenderDetailsPopup } from "@/components/tender-details-popup"
+import { TenderApplicationForm } from "@/components/tender-application-form"
 
 // Types for tender data
 interface Tender {
@@ -50,6 +42,18 @@ interface Tender {
   contactPerson: string
   contactEmail: string
   documents: string[]
+  evaluationCriteria?: string[]
+  termsAndConditions?: string[]
+  scopeOfWork?: string
+  bidBondRequired?: boolean
+  bidBondAmount?: number
+  preBidMeeting?: string
+  siteVisitRequired?: boolean
+  siteVisitDate?: string
+}
+
+interface ApplicationFormData {
+  [key: string]: any
 }
 
 export function BidderPortal() {
@@ -59,36 +63,29 @@ export function BidderPortal() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [applyingTender, setApplyingTender] = useState<string | null>(null)
+  const [selectedTender, setSelectedTender] = useState<Tender | null>(null)
+  const [showTenderDetails, setShowTenderDetails] = useState(false)
 
-  // Fetch tenders from database
+  // ✅ New states for application form
+  const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [selectedTenderForApplication, setSelectedTenderForApplication] = useState<Tender | null>(null)
+
+  // Fetch tenders from API
   const fetchTenders = async () => {
     setLoading(true)
     setError(null)
     try {
-      // Replace with actual API endpoint
       const response = await fetch('/api/tenders', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch tenders')
-      }
+      if (!response.ok) throw new Error('Failed to fetch tenders')
 
       const data = await response.json()
-      
-      if (Array.isArray(data)) {
-        setTenders(data)
-      } else if (data && Array.isArray(data.tenders)) {
-        setTenders(data.tenders)
-      } else if (data && Array.isArray(data.data)) {
-        setTenders(data.data)
-      } else {
-        console.warn('Unexpected API response structure')
-        setTenders([])
-      }
+      if (Array.isArray(data)) setTenders(data)
+      else if (Array.isArray(data.tenders)) setTenders(data.tenders)
+      else if (Array.isArray(data.data)) setTenders(data.data)
+      else setTenders([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tenders')
       console.error('Error fetching tenders:', err)
@@ -98,32 +95,48 @@ export function BidderPortal() {
     }
   }
 
-  // Handle browse tenders button click
   const handleBrowseTenders = () => {
     setActiveTab("tenders")
     fetchTenders()
   }
 
-  // Handle apply for tender with loading state
-  const handleApplyForTender = async (tenderId: string) => {
-    setApplyingTender(tenderId)
+  const handleViewTenderDetails = (tender: Tender) => {
+    setSelectedTender(tender)
+    setShowTenderDetails(true)
+  }
+
+  // ✅ Updated handleApplyForTender
+  const handleApplyForTender = async (tender: Tender) => {
+    setSelectedTenderForApplication(tender)
+    setShowApplicationForm(true)
+  }
+
+  // ✅ New function for submitting application form
+  const handleApplicationSubmit = async (applicationData: ApplicationFormData) => {
+    setApplyingTender(selectedTenderForApplication?.id || null)
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      window.location.href = `/portals/tender-procurement/apply/${tenderId}`
+      const response = await fetch('/api/tenders/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenderId: selectedTenderForApplication?.id,
+          applicationData,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to submit application')
+
+      await response.json()
+      alert('Application submitted successfully!')
+      fetchTenders()
     } catch (error) {
-      console.error('Error applying for tender:', error)
-      alert('Failed to apply for tender. Please try again.')
+      console.error('Error submitting application:', error)
+      alert('Failed to submit application. Please try again.')
     } finally {
       setApplyingTender(null)
     }
   }
 
-  // Handle view tender details
-  const handleViewTenderDetails = (tenderId: string) => {
-    window.location.href = `/portals/tender-procurement/tenders/${tenderId}`
-  }
-
-  // Handle download tender documents
   const handleDownloadDocuments = (tenderId: string, documentName: string) => {
     console.log(`Downloading ${documentName} for tender ${tenderId}`)
     alert(`Downloading ${documentName}...`)
@@ -165,7 +178,6 @@ export function BidderPortal() {
     )
   }
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
@@ -175,33 +187,26 @@ export function BidderPortal() {
     }).format(amount)
   }
 
-  // Check if tender deadline has passed
-  const isTenderExpired = (deadline: string) => {
-    return new Date(deadline) < new Date()
-  }
+  const isTenderExpired = (deadline: string) => new Date(deadline) < new Date()
 
-  // Filter tenders based on search term
-  const filteredTenders = Array.isArray(tenders) ? tenders.filter(tender =>
-    tender.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tender.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tender.category.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : []
+  const filteredTenders = Array.isArray(tenders)
+    ? tenders.filter(t =>
+        t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : []
 
   return (
     <>
-      {/* Welcome Section */}
       <div className="mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-          Welcome back, Valued Bidder
-        </h2>
-        <p className="text-lg text-muted-foreground">
-          Browse available tenders or track your submissions.
-        </p>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2">Welcome back, Valued Bidder</h2>
+        <p className="text-lg text-muted-foreground">Browse available tenders or track your submissions.</p>
       </div>
 
-      {/* Main Action Cards */}
+      {/* Action Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Available Tenders Card */}
+        {/* Available Tenders */}
         <Card className="bg-primary/10 border-primary/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
@@ -213,33 +218,15 @@ export function BidderPortal() {
                 <p className="text-primary/80 mb-4">
                   Browse and apply for open tender opportunities. View requirements and submit your proposals.
                 </p>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-primary">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>View open tenders</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-primary">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Download tender documents</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-primary">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Submit your proposal</span>
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleBrowseTenders}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
-                >
-                  <Eye className="mr-2 h-5 w-5" />
-                  Browse Tenders
+                <Button onClick={handleBrowseTenders} className="bg-primary text-white w-full">
+                  <Eye className="mr-2 h-5 w-5" /> Browse Tenders
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* My Submissions Card */}
+        {/* My Submissions */}
         <Card className="bg-green-100 border-green-200 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
@@ -251,26 +238,8 @@ export function BidderPortal() {
                 <p className="text-green-700 mb-4">
                   Track your submitted tender applications and view evaluation status and feedback.
                 </p>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Track submission status</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>View evaluation results</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Download submission documents</span>
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleNavigateToSubmissions}
-                  className="bg-green-600 hover:bg-green-700 text-white w-full"
-                >
-                  <BarChart className="mr-2 h-5 w-5" />
-                  View My Submissions
+                <Button onClick={handleNavigateToSubmissions} className="bg-green-600 hover:bg-green-700 text-white w-full">
+                  <BarChart className="mr-2 h-5 w-5" /> View My Submissions
                 </Button>
               </div>
             </div>
@@ -278,74 +247,32 @@ export function BidderPortal() {
         </Card>
       </div>
 
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-2">
-          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="tenders" className="text-xs sm:text-sm">Available Tenders</TabsTrigger>
-          <TabsTrigger value="submissions" className="text-xs sm:text-sm">My Submissions</TabsTrigger>
-          <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="tenders">Available Tenders</TabsTrigger>
+          <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest updates and actions in the system</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No recent activity to display</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Upcoming Deadlines */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Deadlines</CardTitle>
-                <CardDescription>Your submission deadlines</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No upcoming deadlines</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         {/* Tenders Tab */}
         <TabsContent value="tenders" className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-bold">Available Tenders</h3>
-              <p className="text-muted-foreground">Browse and apply for open tenders</p>
-            </div>
-          </div>
-
-          {/* Search and Filter */}
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search available tenders..." 
+              <Input
+                placeholder="Search available tenders..."
                 className="pl-10 w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="bg-transparent w-full sm:w-auto">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
+            <Button variant="outline">
+              <Filter className="mr-2 h-4 w-4" /> Filter
             </Button>
           </div>
 
-          {/* Loading State */}
           {loading && (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -353,25 +280,20 @@ export function BidderPortal() {
             </div>
           )}
 
-          {/* Error State */}
           {error && (
             <Card className="border-red-200 bg-red-50">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2 text-red-700">
-                  <AlertCircle className="h-5 w-5" />
-                  <p>Error loading tenders: {error}</p>
-                </div>
+              <CardContent className="p-6 flex items-center text-red-700">
+                <AlertCircle className="h-5 w-5 mr-2" /> {error}
               </CardContent>
             </Card>
           )}
 
-          {/* Tenders Grid */}
-          {!loading && (
+          {!loading && filteredTenders.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredTenders.map((tender) => {
                 const isExpired = isTenderExpired(tender.deadline)
                 const isApplying = applyingTender === tender.id
-                
+
                 return (
                   <Card key={tender.id} className="cursor-pointer hover:shadow-lg transition-shadow">
                     <CardHeader>
@@ -386,56 +308,42 @@ export function BidderPortal() {
                           )}
                         </div>
                       </div>
-                      <CardDescription className="line-clamp-2">{tender.description}</CardDescription>
+                      <CardDescription>{tender.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Category</span>
-                          <span>{tender.category}</span>
-                        </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Budget</span>
                           <span>{formatCurrency(tender.budget)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Submissions</span>
-                          <span>{tender.submissions}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Deadline</span>
                           <span>{new Date(tender.deadline).toLocaleDateString()}</span>
                         </div>
-                        
-                        {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="flex-1"
-                            onClick={() => handleViewTenderDetails(tender.id)}
+                            onClick={() => handleViewTenderDetails(tender)}
                             disabled={isApplying}
                           >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            <Eye className="mr-2 h-4 w-4" /> View
                           </Button>
-                          <Button 
+                          <Button
                             variant="outline"
                             className="flex-1"
                             onClick={() => handleDownloadDocuments(tender.id, "Tender Documents")}
-                            disabled={isApplying || isExpired}
                           >
-                            <Download className="mr-2 h-4 w-4" />
-                            Documents
+                            <Download className="mr-2 h-4 w-4" /> Docs
                           </Button>
-                          <Button 
+                          <Button
                             className="flex-1 bg-green-600 hover:bg-green-700"
-                            onClick={() => handleApplyForTender(tender.id)}
+                            onClick={() => handleApplyForTender(tender)}
                             disabled={isApplying || isExpired}
                           >
                             {isApplying ? (
                               <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Applying...
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...
                               </>
                             ) : (
                               <>
@@ -445,23 +353,6 @@ export function BidderPortal() {
                             )}
                           </Button>
                         </div>
-
-                        {/* Requirements Preview */}
-                        <div className="mt-3">
-                          <p className="text-sm font-medium mb-2">Key Requirements:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {tender.requirements.slice(0, 2).map((req, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {req}
-                              </Badge>
-                            ))}
-                            {tender.requirements.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{tender.requirements.length - 2} more
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -469,120 +360,28 @@ export function BidderPortal() {
               })}
             </div>
           )}
-
-          {/* Empty State */}
-          {!loading && !error && filteredTenders.length === 0 && (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Tenders Found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm 
-                    ? "No tenders match your search criteria. Try adjusting your search terms."
-                    : "There are currently no tenders available."}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Submissions Tab */}
-        <TabsContent value="submissions" className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-bold">My Submissions</h3>
-              <p className="text-muted-foreground">Track your tender applications and status</p>
-            </div>
-            <Button variant="outline" className="w-full sm:w-auto">
-              <Download className="mr-2 h-4 w-4" />
-              Export Data
-            </Button>
-          </div>
-
-          {/* Submissions List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>My Recent Submissions</CardTitle>
-              <CardDescription>Your recent tender applications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No submissions found</p>
-                <p className="text-sm mt-2">Your submitted tender applications will appear here</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports" className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-bold">Reports & Analytics</h3>
-              <p className="text-muted-foreground">Generate insights and performance reports</p>
-            </div>
-            <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
-              <PieChart className="mr-2 h-4 w-4" />
-              Generate Report
-            </Button>
-          </div>
-
-          {/* Report Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  Submission Performance
-                </CardTitle>
-                <CardDescription>
-                  Analysis of your submission success rates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">
-                  View Report
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-green-600" />
-                  Market Analysis
-                </CardTitle>
-                <CardDescription>
-                  Industry trends and competitor analysis
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">
-                  View Report
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-purple-600" />
-                  Financial Overview
-                </CardTitle>
-                <CardDescription>
-                  Budget analysis and ROI tracking
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">
-                  View Report
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
+
+      {/* Tender Details Popup */}
+      <TenderDetailsPopup
+        isOpen={showTenderDetails}
+        onClose={() => setShowTenderDetails(false)}
+        tender={selectedTender}
+        onApply={handleApplyForTender}
+        onDownloadDocuments={handleDownloadDocuments}
+      />
+
+      {/* ✅ Tender Application Form */}
+      <TenderApplicationForm
+        isOpen={showApplicationForm}
+        onClose={() => {
+          setShowApplicationForm(false)
+          setSelectedTenderForApplication(null)
+        }}
+        tender={selectedTenderForApplication}
+        onApply={handleApplicationSubmit}
+      />
     </>
   )
 }

@@ -1,114 +1,181 @@
-// app/api/tenders/route.ts - GET and POST handlers
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Tender } from '@/models/Tender';
+import Tender from '@/models/Tender';
 
+// GET /api/tenders - Get all tenders with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-
-    const searchParams = request.nextUrl.searchParams;
+    
+    const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
+    const search = searchParams.get('search');
     const organization = searchParams.get('organization');
     const category = searchParams.get('category');
-    const search = searchParams.get('search');
-    const sortBy = searchParams.get('sortBy') || 'createdAt';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build query
-    const query: any = {};
-
-    if (status) query.status = status;
-    if (organization) query.organization = new RegExp(organization, 'i');
-    if (category) query.category = new RegExp(category, 'i');
+    // Build filter object
+    const filter: any = {};
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    if (organization) {
+      filter.organization = { $regex: organization, $options: 'i' };
+    }
+    
+    if (category) {
+      filter.category = { $regex: category, $options: 'i' };
+    }
+    
     if (search) {
-      query.$or = [
-        { title: new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') },
-        { tenderNumber: new RegExp(search, 'i') },
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tenderNumber: { $regex: search, $options: 'i' } }
       ];
     }
 
+    console.log('Fetching tenders with filter:', filter);
+    
     // Calculate pagination
     const skip = (page - 1) * limit;
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-    // Execute query
-    const tenders = await Tender.find(query)
-      .sort(sort)
+    
+    // Get tenders with filters
+    const tenders = await Tender.find(filter)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await Tender.countDocuments(query);
+    // Get total count for pagination
+    const total = await Tender.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+
+    console.log(`Found ${tenders.length} tenders out of ${total} total`);
 
     return NextResponse.json({
       success: true,
       data: tenders,
       pagination: {
-        total,
         page,
         limit,
-        pages: Math.ceil(total / limit),
-      },
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
     });
+
   } catch (error: any) {
     console.error('Error fetching tenders:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Error fetching tenders',
-        error: error.message,
+      { 
+        success: false, 
+        message: 'Failed to fetch tenders',
+        error: error.message 
       },
       { status: 500 }
     );
   }
 }
 
+// POST /api/tenders - Create a new tender
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
+    
+    const tenderData = await request.json();
+    
+    console.log('Received tender data:', tenderData);
 
-    const body = await request.json();
+    // Validate required fields
+    if (!tenderData.title || !tenderData.closingDate) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Title and closing date are required' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Generate tender number if not provided
+    if (!tenderData.tenderNumber) {
+      const timestamp = Date.now();
+      tenderData.tenderNumber = `TND-${timestamp}`;
+    }
 
     // Check if tender number already exists
     const existingTender = await Tender.findOne({ 
-      tenderNumber: body.tenderNumber 
+      tenderNumber: tenderData.tenderNumber 
     });
-
+    
     if (existingTender) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Tender with this number already exists',
-          tenderNumber: body.tenderNumber,
+        { 
+          success: false, 
+          message: 'Tender number already exists' 
         },
         { status: 409 }
       );
     }
 
-    const tender = new Tender(body);
-    await tender.save();
+    // Create new tender
+    const tender = new Tender({
+      ...tenderData,
+      metadata: {
+        ...tenderData.metadata,
+        lastUpdated: new Date()
+      }
+    });
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Tender created successfully',
-        data: tender,
-      },
-      { status: 201 }
-    );
+    const savedTender = await tender.save();
+    
+    console.log('Tender created successfully:', savedTender._id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Tender created successfully',
+      data: savedTender
+    }, { status: 201 });
+
   } catch (error: any) {
     console.error('Error creating tender:', error);
+    
+    // Handle MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Validation failed',
+          errors 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Tender number already exists' 
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Error creating tender',
-        error: error.message,
+      { 
+        success: false, 
+        message: 'Failed to create tender',
+        error: error.message 
       },
-      { status: 400 }
+      { status: 500 }
     );
   }
 }

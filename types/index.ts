@@ -1,80 +1,111 @@
+// types.ts
+export interface Document {
+  id: string
+  name: string
+  type: string
+  url: string
+  uploadedAt: string
+  size?: string
+}
+
 export interface Tender {
-    id: string
-    title: string
-    department: string
-    status: "Open" | "Evaluation" | "Awarded" | "Draft" | "Rejected" | "Closed"
-    deadline: string
-    budget: string
-    submissions: number
-    category: string
-    description: string
-    referenceNumber: string
-    requestedItems: string[]
-    advertisementLink: string
-    evaluationScore?: number
-    contactPerson?: string
-    contactEmail?: string
-    contactPhone?: string
-    location?: string
-    createdDate?: string
-    contractPeriod?: string
-    cidbGrading?: string
-    bbbeeLevel?: string
-    submissionMethod?: string
-    tenderFee?: string
-  }
+  id: string
+  title: string
+  description: string
+  status: 'draft' | 'published' | 'open' | 'under_review' | 'awarded' | 'closed' | 'cancelled'
+  category: string
+  deadline: string
+  estimatedBudget: string
+  createdBy: string
+  createdDate: string
+  requiresApproval?: boolean
+  documents?: Document[]
+  evaluationCriteria?: string
+  contractType?: string
+  bidOpeningDate?: string
+  location?: string
+  tenderNumber?: string
+  publishedDate?: string
+  bidderApplicationLink?: string
+}
+
+export interface Submission {
+  id: string
+  tenderId: string
+  tenderTitle: string
+  companyName: string
+  applicationNumber?: string
+  submissionDate: string
+  lastUpdated: string
+  status: 'submitted' | 'under_review' | 'evaluated' | 'awarded' | 'rejected'
+  bidAmount: string
+  documents?: Document[]
   
-  export interface Submission {
-    id: string
-    tenderId: string
-    supplier: string
-    tenderTitle: string
-    companyName: string
-    submissionDate: string
-    lastUpdated: string
-    status: string
-    bidAmount: string
-    documents?: Document[]
-    notes?: string
-    submittedDate: string
-    score?: string
-    
-  }
-  
-  export interface Document {
-    id: string
+  // Submitter/applicant details
+  submitter: {
     name: string
-    url: string
-    type: string
-    category: string
-    description: string
-    version: string
-    uploadDate: string
-    lastModified: string
-    size: number
-    uploadedBy: string
+    email: string
+    phone?: string
+    position?: string
+    department?: string
   }
   
-  export interface CalendarEvent {
-    id: number
-    date: string
-    time: string
-    title: string
-    type: string
+  // Company details
+  companyDetails?: {
+    name: string
+    registrationNumber?: string
+    address?: string
+    contactPerson: string
+    contactEmail: string
+    contactPhone?: string
+    taxNumber?: string
+    yearsInBusiness?: number
   }
   
-  export interface Notification {
-    id: number
-    title: string
-    message: string
-    date: string
-    type: string
-    urgent: boolean
-    read: boolean
-  }
+  // Additional fields from existing interface
+  supplier?: string
+  company?: string
+  proposal?: string
+  amount?: number
+  score?: number
+  submittedAt?: string
+  evaluation?: any
+  submittedDate?: string
+  notes?: string
+  contactPerson?: string
+  contactEmail?: string
+  contactPhone?: string
+}
 
+export interface Evaluation {
+  id: string
+  submissionId: string
+  evaluator: string
+  score: number
+  comments: string
+  criteria: EvaluationCriteria[]
+  submittedAt: string
+}
 
+export interface EvaluationCriteria {
+  id: string
+  name: string
+  score: number
+  maxScore: number
+  comments: string
+  weight: number
+}
 
- 
-  
-  
+export interface Contract {
+  id: string
+  tenderId: string
+  submissionId: string
+  title: string
+  status: 'draft' | 'active' | 'completed' | 'terminated'
+  startDate: string
+  endDate: string
+  value: string
+  contractor: string
+  createdBy: string
+  documents?: Document[]
+}

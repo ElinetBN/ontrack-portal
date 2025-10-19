@@ -78,9 +78,9 @@ export function TenderProcurementDashboard() {
         console.log('📊 Main Component: Loaded submissions from DB:', submissionsData.length);
         
         if (submissionsData.length > 0) {
-          // Map database submissions to Submission type
+          // Map database submissions to Submission type with submitter details
           const mappedSubmissions: Submission[] = submissionsData.map((sub: any) => {
-            const mappedSubmission = {
+            const mappedSubmission: Submission = {
               id: sub._id || sub.id,
               tenderId: (sub.tender && sub.tender._id) || sub.tender || 'unknown-tender',
               supplier: sub.company?.name || sub.companyName || 'Unknown Supplier',
@@ -102,7 +102,28 @@ export function TenderProcurementDashboard() {
               contactPerson: sub.contact?.person || sub.contactPerson,
               contactEmail: sub.contact?.email || sub.contactEmail,
               contactPhone: sub.contact?.phone || sub.contactPhone,
-              applicationNumber: sub.applicationNumber
+              applicationNumber: sub.applicationNumber,
+              
+              // Submitter details
+              submitter: {
+                name: sub.submitter?.name || sub.contact?.person || sub.contactPerson || 'Unknown Submitter',
+                email: sub.submitter?.email || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+                phone: sub.submitter?.phone || sub.contact?.phone || sub.contactPhone,
+                position: sub.submitter?.position || sub.contact?.position,
+                department: sub.submitter?.department || sub.contact?.department
+              },
+              
+              // Company details
+              companyDetails: {
+                name: sub.company?.name || sub.companyName || 'Unknown Company',
+                registrationNumber: sub.company?.registrationNumber || sub.companyRegistrationNumber,
+                address: sub.company?.address || sub.companyAddress,
+                contactPerson: sub.company?.contactPerson || sub.contact?.person || sub.contactPerson || 'Unknown Contact',
+                contactEmail: sub.company?.contactEmail || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+                contactPhone: sub.company?.contactPhone || sub.contact?.phone || sub.contactPhone,
+                taxNumber: sub.company?.taxNumber || sub.taxNumber,
+                yearsInBusiness: sub.company?.yearsInBusiness || sub.yearsInBusiness
+              }
             };
             
             console.log('✅ Main Component - Mapped submission:', {
@@ -110,7 +131,8 @@ export function TenderProcurementDashboard() {
               supplier: mappedSubmission.supplier,
               tenderTitle: mappedSubmission.tenderTitle,
               status: mappedSubmission.status,
-              applicationNumber: mappedSubmission.applicationNumber
+              applicationNumber: mappedSubmission.applicationNumber,
+              submitter: mappedSubmission.submitter
             });
             
             return mappedSubmission;
@@ -157,11 +179,23 @@ export function TenderProcurementDashboard() {
   }
 
   const handleReviewClick = (submission: Submission) => {
+    console.log('📋 Review clicked for submission:', {
+      id: submission.id,
+      tenderTitle: submission.tenderTitle,
+      companyName: submission.companyName,
+      submitter: submission.submitter,
+      companyDetails: submission.companyDetails
+    });
+    
     const tender = tenders.find(t => t.id === submission.tenderId)
     if (tender) {
       setSelectedTenderInfo(tender)
       setShowTenderInfo(true)
     }
+    
+    // You can also navigate to a dedicated review page or open a review modal
+    // setActiveTab('review');
+    // setSelectedSubmissionForReview(submission);
   }
 
   // Enhanced tender creation handler
@@ -216,17 +250,39 @@ export function TenderProcurementDashboard() {
       console.log('Submitting application for tender:', selectedTenderForApplication?.id)
       console.log('Application data:', applicationData)
       
+      // Prepare submitter and company details for API
+      const submissionData = {
+        ...applicationData,
+        tender: selectedTenderForApplication!.id,
+        status: 'submitted',
+        // Include submitter details
+        submitter: {
+          name: applicationData.contactPerson,
+          email: applicationData.contactEmail,
+          phone: applicationData.contactPhone,
+          position: applicationData.position,
+          department: applicationData.department
+        },
+        // Include company details
+        company: {
+          name: applicationData.companyName,
+          registrationNumber: applicationData.registrationNumber,
+          address: applicationData.companyAddress,
+          contactPerson: applicationData.contactPerson,
+          contactEmail: applicationData.contactEmail,
+          contactPhone: applicationData.contactPhone,
+          taxNumber: applicationData.taxNumber,
+          yearsInBusiness: applicationData.yearsInBusiness
+        }
+      }
+      
       // Submit to API to store in database
       const response = await fetch('/api/tender-applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...applicationData,
-          tender: selectedTenderForApplication!.id,
-          status: 'submitted'
-        })
+        body: JSON.stringify(submissionData)
       })
 
       if (!response.ok) {
@@ -264,7 +320,26 @@ export function TenderProcurementDashboard() {
             contactPerson: sub.contact?.person || sub.contactPerson,
             contactEmail: sub.contact?.email || sub.contactEmail,
             contactPhone: sub.contact?.phone || sub.contactPhone,
-            applicationNumber: sub.applicationNumber
+            applicationNumber: sub.applicationNumber,
+            // Submitter details
+            submitter: {
+              name: sub.submitter?.name || sub.contact?.person || sub.contactPerson || 'Unknown Submitter',
+              email: sub.submitter?.email || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+              phone: sub.submitter?.phone || sub.contact?.phone || sub.contactPhone,
+              position: sub.submitter?.position || sub.contact?.position,
+              department: sub.submitter?.department || sub.contact?.department
+            },
+            // Company details
+            companyDetails: {
+              name: sub.company?.name || sub.companyName || 'Unknown Company',
+              registrationNumber: sub.company?.registrationNumber || sub.companyRegistrationNumber,
+              address: sub.company?.address || sub.companyAddress,
+              contactPerson: sub.company?.contactPerson || sub.contact?.person || sub.contactPerson || 'Unknown Contact',
+              contactEmail: sub.company?.contactEmail || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+              contactPhone: sub.company?.contactPhone || sub.contact?.phone || sub.contactPhone,
+              taxNumber: sub.company?.taxNumber || sub.taxNumber,
+              yearsInBusiness: sub.company?.yearsInBusiness || sub.yearsInBusiness
+            }
           }))
           setDbSubmissions(mappedSubmissions)
         }
@@ -365,7 +440,26 @@ export function TenderProcurementDashboard() {
           contactPerson: sub.contact?.person || sub.contactPerson,
           contactEmail: sub.contact?.email || sub.contactEmail,
           contactPhone: sub.contact?.phone || sub.contactPhone,
-          applicationNumber: sub.applicationNumber
+          applicationNumber: sub.applicationNumber,
+          // Submitter details
+          submitter: {
+            name: sub.submitter?.name || sub.contact?.person || sub.contactPerson || 'Unknown Submitter',
+            email: sub.submitter?.email || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+            phone: sub.submitter?.phone || sub.contact?.phone || sub.contactPhone,
+            position: sub.submitter?.position || sub.contact?.position,
+            department: sub.submitter?.department || sub.contact?.department
+          },
+          // Company details
+          companyDetails: {
+            name: sub.company?.name || sub.companyName || 'Unknown Company',
+            registrationNumber: sub.company?.registrationNumber || sub.companyRegistrationNumber,
+            address: sub.company?.address || sub.companyAddress,
+            contactPerson: sub.company?.contactPerson || sub.contact?.person || sub.contactPerson || 'Unknown Contact',
+            contactEmail: sub.company?.contactEmail || sub.contact?.email || sub.contactEmail || 'unknown@example.com',
+            contactPhone: sub.company?.contactPhone || sub.contact?.phone || sub.contactPhone,
+            taxNumber: sub.company?.taxNumber || sub.taxNumber,
+            yearsInBusiness: sub.company?.yearsInBusiness || sub.yearsInBusiness
+          }
         }));
         setDbSubmissions(mappedSubmissions);
       }

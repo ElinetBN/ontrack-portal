@@ -16,6 +16,7 @@ import { TenderRegistrationPopup } from "./tender-registration-popup"
 import { TenderInfoPopup } from "./tender-info-popup"
 import { CalendarSidebar } from "./calendar-sidebar"
 import { TenderApplicationForm } from "./tender-application-form"
+import { SubmissionReviewPopup } from "./submission-review-popup" // New component
 
 // Import data and types
 import { initialTenders, initialSubmissions } from "../data/mock-data"
@@ -51,6 +52,8 @@ export function TenderProcurementDashboard() {
   const [selectedTenderForApplication, setSelectedTenderForApplication] = useState<Tender | null>(null)
   const [dbSubmissions, setDbSubmissions] = useState<Submission[]>(initialSubmissions)
   const [loadingSubmissions, setLoadingSubmissions] = useState(false)
+  const [selectedSubmissionForReview, setSelectedSubmissionForReview] = useState<Submission | null>(null) // New state
+  const [showSubmissionReview, setShowSubmissionReview] = useState(false) // New state
 
   const {
     tenders,
@@ -178,6 +181,7 @@ export function TenderProcurementDashboard() {
     }).format(amount);
   }
 
+  // Fixed: Handle review click to show submission details
   const handleReviewClick = (submission: Submission) => {
     console.log('📋 Review clicked for submission:', {
       id: submission.id,
@@ -187,15 +191,19 @@ export function TenderProcurementDashboard() {
       companyDetails: submission.companyDetails
     });
     
-    const tender = tenders.find(t => t.id === submission.tenderId)
-    if (tender) {
-      setSelectedTenderInfo(tender)
-      setShowTenderInfo(true)
-    }
+    setSelectedSubmissionForReview(submission);
+    setShowSubmissionReview(true);
+  }
+
+  // New: Handle evaluate button click - navigate to evaluation tab
+  const handleEvaluateClick = (submission: Submission) => {
+    console.log('📊 Evaluate clicked for submission:', submission.id);
+    setSelectedSubmissionForReview(submission);
+    setShowSubmissionReview(false);
+    setActiveTab('evaluation');
     
-    // You can also navigate to a dedicated review page or open a review modal
-    // setActiveTab('review');
-    // setSelectedSubmissionForReview(submission);
+    // You can pass the submission to evaluation tab or use context/state management
+    // For now, we'll rely on the evaluation tab to handle the selected submission
   }
 
   // Enhanced tender creation handler
@@ -557,6 +565,7 @@ export function TenderProcurementDashboard() {
               onEvaluationComplete={handleEvaluationComplete}
               onReviewClick={handleReviewClick}
               userRole={userRole}
+              selectedSubmission={selectedSubmissionForReview} // Pass selected submission
             />
           </TabsContent>
 
@@ -607,6 +616,17 @@ export function TenderProcurementDashboard() {
         }}
         tender={selectedTenderForApplication}
         onApply={handleApplicationSubmit}
+      />
+
+      {/* Submission Review Popup */}
+      <SubmissionReviewPopup
+        isOpen={showSubmissionReview}
+        onClose={() => {
+          setShowSubmissionReview(false)
+          setSelectedSubmissionForReview(null)
+        }}
+        submission={selectedSubmissionForReview}
+        onEvaluate={handleEvaluateClick}
       />
 
       {/* User Role Badge */}

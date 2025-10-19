@@ -1,328 +1,157 @@
-// app/api/tender-applications/route.ts
+// Add this GET method to your existing tender-applications/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import TenderApplication from '@/models/TenderApplication';
 import Tender from '@/models/Tender';
 
-// Utility function to generate application number
-function generateApplicationNumber() {
-  const timestamp = Date.now().toString();
-  const random = Math.random().toString(36).substring(2, 10).toUpperCase();
-  return `APP-${timestamp}-${random}`;
+// Helper function to format currency
+function formatCurrency(amount: number) {
+  if (!amount || isNaN(amount)) return 'R 0.00';
+  return new Intl.NumberFormat('en-ZA', {
+    style: 'currency',
+    currency: 'ZAR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
-// POST /api/tender-applications - Submit a new tender application
-export async function POST(request: NextRequest) {
-  let savedApplication;
-  
+// GET /api/tender-applications - Get all submissions with filtering
+export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Starting tender application submission process...');
+    console.log('🚀 Fetching all tender applications...');
     
     // Connect to database
     await connectDB();
     console.log('✅ Database connected');
+
+    const { searchParams } = new URL(request.url);
+    const tenderId = searchParams.get('tenderId');
+    const status = searchParams.get('status');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const skip = (page - 1) * limit;
+
+    // Build filter object
+    const filter: any = {};
     
-    const applicationData = await request.json();
+    if (tenderId && tenderId !== 'all') {
+      filter.tender = tenderId;
+    }
     
-    console.log('📝 Received application data:', {
-      tenderId: applicationData.tenderId,
-      companyName: applicationData.companyName,
-      contactPerson: applicationData.contactPerson,
-      totalBidAmount: applicationData.totalBidAmount
-    });
-
-    // Validate required fields
-    const requiredFields = [
-      'tenderId', 
-      'companyName', 
-      'registrationNumber', 
-      'taxNumber', 
-      'companyType',
-      'yearEstablished',
-      'numberOfEmployees',
-      'contactPerson', 
-      'contactEmail', 
-      'contactPhone',
-      'physicalAddress',
-      'city',
-      'province',
-      'postalCode',
-      'proposalTitle',
-      'executiveSummary',
-      'methodology',
-      'workPlan',
-      'teamComposition',
-      'totalBidAmount', 
-      'paymentTerms',
-      'bbbeeStatus',
-      'bbbeeLevel',
-      'termsAccepted',
-      'informationAccurate',
-      'nonCollusion'
-    ];
-    
-    const missingFields = requiredFields.filter(field => {
-      const value = applicationData[field];
-      return value === undefined || value === null || value === '' || (typeof value === 'boolean' && !value);
-    });
-    
-    if (missingFields.length > 0) {
-      console.log('❌ Missing required fields:', missingFields);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: `Missing or invalid required fields: ${missingFields.join(', ')}` 
-        },
-        { status: 400 }
-      );
+    if (status && status !== 'all') {
+      filter.status = status;
     }
 
-    // Check if tender exists and is still open
-    const tender = await Tender.findById(applicationData.tenderId);
-    if (!tender) {
-      console.log('❌ Tender not found:', applicationData.tenderId);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Tender not found' 
-        },
-        { status: 404 }
-      );
-    }
+    console.log('🔍 Filter criteria:', filter);
 
-    if (tender.status !== 'open') {
-      console.log('❌ Tender not open for applications. Status:', tender.status);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Tender is no longer accepting applications' 
-        },
-        { status: 400 }
-      );
-    }
+    // Get submissions with pagination
+    const submissions = await TenderApplication.find(filter)
+      .populate('tender', 'title description referenceNumber closingDate status')
+      .populate('company', 'name registrationNumber taxNumber contactEmail contactPhone')
+      .sort({ submittedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-    // Check if deadline hasn't passed
-    if (new Date(tender.closingDate) < new Date()) {
-      console.log('❌ Tender deadline has passed:', tender.closingDate);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Tender application deadline has passed' 
-        },
-        { status: 400 }
-      );
-    }
+    // Get total count for pagination
+    const total = await TenderApplication.countDocuments(filter);
 
-    // Check for duplicate application
-    const existingApplication = await TenderApplication.findOne({
-      tender: applicationData.tenderId,
-      'company.registrationNumber': applicationData.registrationNumber
-    });
+    console.log(`✅ Found ${submissions.length} submissions out of ${total} total`);
 
-    if (existingApplication) {
-      console.log('❌ Duplicate application found for company:', applicationData.registrationNumber);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Your company has already submitted an application for this tender' 
-        },
-        { status: 409 }
-      );
-    }
-
-    // Prepare the application data for saving to database
-    const applicationPayload = {
-      tender: applicationData.tenderId,
-      company: {
-        name: applicationData.companyName,
-        registrationNumber: applicationData.registrationNumber,
-        taxNumber: applicationData.taxNumber,
-        companyType: applicationData.companyType,
-        yearEstablished: applicationData.yearEstablished,
-        numberOfEmployees: applicationData.numberOfEmployees,
-        physicalAddress: applicationData.physicalAddress,
-        postalAddress: applicationData.postalAddress || applicationData.physicalAddress,
-        city: applicationData.city,
-        province: applicationData.province,
-        postalCode: applicationData.postalCode
-      },
-      contact: {
-        person: applicationData.contactPerson,
-        email: applicationData.contactEmail,
-        phone: applicationData.contactPhone,
-        alternativeContact: applicationData.alternativeContact || ''
-      },
-      proposal: {
-        title: applicationData.proposalTitle,
-        executiveSummary: applicationData.executiveSummary,
-        technicalProposal: applicationData.technicalProposal || applicationData.methodology || 'Technical proposal details provided',
-        methodology: applicationData.methodology,
-        workPlan: applicationData.workPlan,
-        teamComposition: applicationData.teamComposition
-      },
-      financial: {
-        totalBidAmount: parseFloat(applicationData.totalBidAmount) || 0,
-        breakdown: applicationData.breakdown || [],
-        paymentTerms: applicationData.paymentTerms,
-        validityPeriod: applicationData.validityPeriod || '90'
-      },
-      compliance: {
-        bbbeeStatus: applicationData.bbbeeStatus,
-        bbbeeLevel: applicationData.bbbeeLevel,
-        taxCompliance: applicationData.taxCompliance || false,
-        cidbRegistration: applicationData.cidbRegistration || '',
-        cidbGrade: applicationData.cidbGrade || ''
-      },
-      documents: (applicationData.uploadedDocuments || []).map((doc: any) => ({
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
-        uploadedAt: new Date()
-      })),
-      declarations: {
-        termsAccepted: applicationData.termsAccepted,
-        informationAccurate: applicationData.informationAccurate,
-        nonCollusion: applicationData.nonCollusion
-      },
-      metadata: {
-        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-        submittedFrom: 'web-portal'
-      }
-    };
-
-    console.log('💾 Preparing to save application to database...');
-
-    // STRATEGY 1: Try using the static method first
-    console.log('🎯 Attempting Strategy 1: Using static createApplication method...');
-    try {
-      savedApplication = await TenderApplication.createApplication(applicationPayload);
-      console.log('✅ Strategy 1 SUCCESS - Application saved via static method');
-    } catch (staticError) {
-      console.log('❌ Strategy 1 FAILED:', staticError.message);
+    // Transform the data to match your frontend expectations
+    const transformedSubmissions = submissions.map(submission => {
+      // Safe data transformation with fallbacks
+      const tenderTitle = submission.tender && typeof submission.tender === 'object' 
+        ? (submission.tender as any).title 
+        : 'Unknown Tender';
       
-      // STRATEGY 2: Manually create with pre-generated applicationNumber
-      console.log('🎯 Attempting Strategy 2: Manual creation with pre-generated applicationNumber...');
-      try {
-        const manualApplicationNumber = generateApplicationNumber();
-        console.log('🔢 Manually generated applicationNumber:', manualApplicationNumber);
-        
-        const application = new TenderApplication({
-          ...applicationPayload,
-          applicationNumber: manualApplicationNumber
-        });
-        
-        savedApplication = await application.save();
-        console.log('✅ Strategy 2 SUCCESS - Application saved with manual applicationNumber');
-      } catch (manualError) {
-        console.log('❌ Strategy 2 FAILED:', manualError.message);
-        
-        // STRATEGY 3: Last resort - create without applicationNumber and update
-        console.log('🎯 Attempting Strategy 3: Create without applicationNumber then update...');
-        try {
-          // Create without applicationNumber first
-          const tempApplication = new TenderApplication(applicationPayload);
-          // Remove applicationNumber to avoid validation error
-          tempApplication.applicationNumber = undefined;
-          
-          let tempSaved = await tempApplication.save();
-          console.log('📝 Temporary save successful, now updating with applicationNumber...');
-          
-          // Now update with applicationNumber
-          const finalApplicationNumber = generateApplicationNumber();
-          savedApplication = await TenderApplication.findByIdAndUpdate(
-            tempSaved._id,
-            { applicationNumber: finalApplicationNumber },
-            { new: true }
-          );
-          console.log('✅ Strategy 3 SUCCESS - Application saved and updated with applicationNumber');
-        } catch (finalError) {
-          console.log('💥 ALL STRATEGIES FAILED:', finalError);
-          throw finalError;
-        }
-      }
-    }
+      const companyName = submission.company && typeof submission.company === 'object'
+        ? (submission.company as any).name
+        : 'Unknown Company';
+      
+      const totalBidAmount = submission.financial?.totalBidAmount || 0;
+      const bidAmount = formatCurrency(totalBidAmount);
 
-    console.log('✅ Application saved successfully to database:', {
-      id: savedApplication._id,
-      applicationNumber: savedApplication.applicationNumber,
-      databaseId: savedApplication._id.toString()
+      return {
+        _id: submission._id?.toString() || '',
+        id: submission._id?.toString() || '',
+        tender: submission.tender,
+        tenderId: submission.tender && typeof submission.tender === 'object' 
+          ? (submission.tender as any)._id?.toString() 
+          : submission.tender?.toString() || '',
+        company: submission.company,
+        companyName: companyName,
+        applicationNumber: submission.applicationNumber || '',
+        status: submission.status || 'submitted',
+        score: submission.score || 0,
+        submittedAt: submission.submittedAt || submission.createdAt || new Date().toISOString(),
+        lastUpdated: submission.lastUpdated || submission.updatedAt || submission.submittedAt || new Date().toISOString(),
+        
+        // Contact information
+        contact: submission.contact || {},
+        contactPerson: submission.contact?.person || '',
+        contactEmail: submission.contact?.email || '',
+        contactPhone: submission.contact?.phone || '',
+        
+        // Proposal information
+        proposal: submission.proposal || {},
+        proposalTitle: submission.proposal?.title || 'No proposal title',
+        executiveSummary: submission.proposal?.executiveSummary || '',
+        methodology: submission.proposal?.methodology || '',
+        workPlan: submission.proposal?.workPlan || '',
+        teamComposition: submission.proposal?.teamComposition || '',
+        
+        // Financial information
+        financial: submission.financial || {},
+        totalBidAmount: totalBidAmount,
+        
+        // Compliance information
+        compliance: submission.compliance || {},
+        bbbeeStatus: submission.compliance?.bbbeeStatus || '',
+        bbbeeLevel: submission.compliance?.bbbeeLevel || '',
+        taxCompliance: submission.compliance?.taxCompliance || false,
+        
+        // Documents
+        documents: submission.documents || [],
+        
+        // Notes and evaluation
+        notes: submission.notes || '',
+        evaluation: submission.evaluation || {},
+        
+        // Additional fields for frontend
+        tenderTitle: tenderTitle,
+        supplier: companyName,
+        amount: totalBidAmount,
+        bidAmount: bidAmount,
+        submissionDate: submission.submittedAt || submission.createdAt || new Date().toISOString(),
+        submittedDate: submission.submittedAt || submission.createdAt || new Date().toISOString()
+      };
     });
 
-    // Update tender submissions count
-    console.log('🔄 Updating tender submissions count...');
-    await Tender.findByIdAndUpdate(applicationData.tenderId, {
-      $inc: { submissionsCount: 1 }
-    });
-    
-    console.log('✅ Tender submissions count updated');
-
-    // Return success response
-    console.log('🎉 Application submission process completed successfully');
-    
     return NextResponse.json({
       success: true,
-      message: 'Tender application submitted successfully and saved to database',
-      data: {
-        id: savedApplication._id,
-        applicationNumber: savedApplication.applicationNumber,
-        submittedAt: savedApplication.submittedAt,
-        databaseRecord: {
-          id: savedApplication._id.toString(),
-          createdAt: savedApplication.createdAt,
-          updatedAt: savedApplication.updatedAt
-        }
+      data: transformedSubmissions,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
-    }, { status: 201 });
+    });
 
   } catch (error: any) {
-    console.error('💥 Error submitting tender application:', error);
+    console.error('💥 Error fetching tender applications:', error);
     
-    // Log additional details about the saved application if it exists
-    if (savedApplication) {
-      console.error('📄 Application was created but save failed:', {
-        id: savedApplication._id,
-        applicationNumber: savedApplication.applicationNumber
-      });
-    }
+    // More detailed error logging
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     
-    // Handle MongoDB validation errors
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map((err: any) => ({
-        field: err.path,
-        message: err.message
-      }));
-      
-      console.log('❌ Validation errors:', validationErrors);
-      
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Application validation failed',
-          errors: validationErrors 
-        },
-        { status: 400 }
-      );
-    }
-
-    // Handle duplicate key errors
-    if (error.code === 11000) {
-      console.log('❌ Duplicate key error:', error.keyValue);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Application with this reference already exists' 
-        },
-        { status: 409 }
-      );
-    }
-
     return NextResponse.json(
       { 
         success: false, 
-        message: 'Failed to submit tender application to database',
-        error: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: 'Failed to fetch tender applications',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       },
       { status: 500 }
     );

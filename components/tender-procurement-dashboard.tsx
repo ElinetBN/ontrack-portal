@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PortalHeader } from "@/components/portal-header"
 import { FileText } from "lucide-react"
@@ -22,6 +22,26 @@ import { initialTenders, initialSubmissions } from "../data/mock-data"
 import { useTenderManagement } from "../hooks/use-tender-management"
 import { Tender, Submission } from "../types"
 
+// API function to fetch submissions from database
+async function fetchSubmissionsFromDB() {
+  try {
+    console.log('🔄 Fetching submissions from /api/tender-applications...');
+    const response = await fetch('/api/tender-applications');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch submissions: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('📦 API Response - Success:', result.success, 'Count:', result.count);
+    
+    return result.success ? result.data : [];
+  } catch (error) {
+    console.error('❌ Error fetching submissions:', error);
+    return [];
+  }
+}
+
 export function TenderProcurementDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
@@ -29,10 +49,12 @@ export function TenderProcurementDashboard() {
   const [showTenderInfo, setShowTenderInfo] = useState(false)
   const [showApplicationForm, setShowApplicationForm] = useState(false)
   const [selectedTenderForApplication, setSelectedTenderForApplication] = useState<Tender | null>(null)
+  const [dbSubmissions, setDbSubmissions] = useState<Submission[]>(initialSubmissions)
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false)
 
   const {
     tenders,
-    submissions,
+    submissions: initialSubmissionsData,
     handleTenderCreate,
     handleTenderUpdate,
     handleTenderDelete,
@@ -46,6 +68,93 @@ export function TenderProcurementDashboard() {
 
   // Mock user role
   const [userRole] = useState<'admin' | 'super_admin' | 'user'>('super_admin')
+
+  // Fetch submissions from database on component mount
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      setLoadingSubmissions(true)
+      try {
+        const submissionsData = await fetchSubmissionsFromDB()
+        console.log('📊 Main Component: Loaded submissions from DB:', submissionsData.length);
+        
+        if (submissionsData.length > 0) {
+          // Map database submissions to Submission type
+          const mappedSubmissions: Submission[] = submissionsData.map((sub: any) => {
+            const mappedSubmission = {
+              id: sub._id || sub.id,
+              tenderId: (sub.tender && sub.tender._id) || sub.tender || 'unknown-tender',
+              supplier: sub.company?.name || sub.companyName || 'Unknown Supplier',
+              company: sub.company?.name || sub.companyName || 'Unknown Company',
+              proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+              amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+              documents: sub.documents || [],
+              status: mapStatus(sub.status),
+              score: sub.score || 0,
+              submittedAt: sub.submittedAt || sub.createdAt,
+              evaluation: sub.evaluation,
+              tenderTitle: (sub.tender && sub.tender.title) || 'Unknown Tender',
+              companyName: sub.company?.name || sub.companyName || 'Unknown Company',
+              submissionDate: sub.submittedAt || sub.createdAt,
+              submittedDate: sub.submittedAt || sub.createdAt,
+              lastUpdated: sub.lastUpdated || sub.updatedAt || sub.submittedAt || sub.createdAt,
+              bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+              notes: sub.notes,
+              contactPerson: sub.contact?.person || sub.contactPerson,
+              contactEmail: sub.contact?.email || sub.contactEmail,
+              contactPhone: sub.contact?.phone || sub.contactPhone,
+              applicationNumber: sub.applicationNumber
+            };
+            
+            console.log('✅ Main Component - Mapped submission:', {
+              id: mappedSubmission.id,
+              supplier: mappedSubmission.supplier,
+              tenderTitle: mappedSubmission.tenderTitle,
+              status: mappedSubmission.status,
+              applicationNumber: mappedSubmission.applicationNumber
+            });
+            
+            return mappedSubmission;
+          });
+          
+          console.log('🎯 Main Component: Setting mapped submissions:', mappedSubmissions.length);
+          setDbSubmissions(mappedSubmissions);
+        } else {
+          console.log('📭 Main Component: No submissions found in database');
+          setDbSubmissions(initialSubmissionsData);
+        }
+      } catch (error) {
+        console.error('💥 Main Component: Error loading submissions:', error);
+        setDbSubmissions(initialSubmissionsData);
+      } finally {
+        setLoadingSubmissions(false);
+      }
+    }
+
+    loadSubmissions();
+  }, [initialSubmissionsData]);
+
+  // Helper function to map API status to Submission status
+  const mapStatus = (status: string): Submission['status'] => {
+    const statusMap: { [key: string]: Submission['status'] } = {
+      'submitted': 'submitted',
+      'under_review': 'under_review',
+      'evaluated': 'evaluated',
+      'awarded': 'awarded',
+      'rejected': 'rejected',
+      'under review': 'under_review'
+    }
+    return statusMap[status] || 'submitted';
+  }
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-ZA', {
+      style: 'currency',
+      currency: 'ZAR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
 
   const handleReviewClick = (submission: Submission) => {
     const tender = tenders.find(t => t.id === submission.tenderId)
@@ -107,34 +216,65 @@ export function TenderProcurementDashboard() {
       console.log('Submitting application for tender:', selectedTenderForApplication?.id)
       console.log('Application data:', applicationData)
       
-      // Create a new submission
-      const newSubmission: Submission = {
-        id: `sub-${Date.now()}`,
-        tenderId: selectedTenderForApplication!.id,
-        supplier: applicationData.companyName,
-        company: applicationData.companyName,
-        companyName: applicationData.companyName,
-        proposal: applicationData.executiveSummary,
-        amount: applicationData.totalBidAmount,
-        bidAmount: `R ${applicationData.totalBidAmount?.toLocaleString() || '0'}`,
-        documents: applicationData.uploadedDocuments,
-        status: 'submitted',
-        submittedAt: new Date().toISOString(),
-        submissionDate: new Date().toISOString(),
-        submittedDate: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
-        tenderTitle: selectedTenderForApplication!.title,
-        notes: applicationData.technicalProposal?.substring(0, 200) + '...'
+      // Submit to API to store in database
+      const response = await fetch('/api/tender-applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...applicationData,
+          tender: selectedTenderForApplication!.id,
+          status: 'submitted'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit application')
       }
 
-      console.log('New submission created:', newSubmission)
+      const result = await response.json()
       
-      // Show success message
-      alert('Application submitted successfully! Your submission is now under review.')
-      
-      // Close the form
-      setShowApplicationForm(false)
-      setSelectedTenderForApplication(null)
+      if (result.success) {
+        // Show success message
+        alert('Application submitted successfully! Your submission is now under review.')
+        
+        // Refresh submissions data
+        const submissionsData = await fetchSubmissionsFromDB()
+        if (submissionsData.length > 0) {
+          const mappedSubmissions: Submission[] = submissionsData.map((sub: any) => ({
+            id: sub._id || sub.id,
+            tenderId: (sub.tender && sub.tender._id) || sub.tender || 'unknown-tender',
+            supplier: sub.company?.name || sub.companyName || 'Unknown Supplier',
+            company: sub.company?.name || sub.companyName || 'Unknown Company',
+            proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+            amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+            documents: sub.documents || [],
+            status: mapStatus(sub.status),
+            score: sub.score || 0,
+            submittedAt: sub.submittedAt || sub.createdAt,
+            evaluation: sub.evaluation,
+            tenderTitle: (sub.tender && sub.tender.title) || 'Unknown Tender',
+            companyName: sub.company?.name || sub.companyName || 'Unknown Company',
+            submissionDate: sub.submittedAt || sub.createdAt,
+            submittedDate: sub.submittedAt || sub.createdAt,
+            lastUpdated: sub.lastUpdated || sub.updatedAt || sub.submittedAt || sub.createdAt,
+            bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+            notes: sub.notes,
+            contactPerson: sub.contact?.person || sub.contactPerson,
+            contactEmail: sub.contact?.email || sub.contactEmail,
+            contactPhone: sub.contact?.phone || sub.contactPhone,
+            applicationNumber: sub.applicationNumber
+          }))
+          setDbSubmissions(mappedSubmissions)
+        }
+        
+        // Close the form
+        setShowApplicationForm(false)
+        setSelectedTenderForApplication(null)
+      } else {
+        throw new Error(result.message || 'Failed to submit application')
+      }
       
     } catch (error) {
       console.error('Error submitting application:', error)
@@ -197,6 +337,45 @@ export function TenderProcurementDashboard() {
     }
   }
 
+  // Refresh submissions data
+  const handleRefreshSubmissions = async () => {
+    setLoadingSubmissions(true);
+    try {
+      const submissionsData = await fetchSubmissionsFromDB();
+      if (submissionsData.length > 0) {
+        const mappedSubmissions: Submission[] = submissionsData.map((sub: any) => ({
+          id: sub._id || sub.id,
+          tenderId: (sub.tender && sub.tender._id) || sub.tender || 'unknown-tender',
+          supplier: sub.company?.name || sub.companyName || 'Unknown Supplier',
+          company: sub.company?.name || sub.companyName || 'Unknown Company',
+          proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+          amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+          documents: sub.documents || [],
+          status: mapStatus(sub.status),
+          score: sub.score || 0,
+          submittedAt: sub.submittedAt || sub.createdAt,
+          evaluation: sub.evaluation,
+          tenderTitle: (sub.tender && sub.tender.title) || 'Unknown Tender',
+          companyName: sub.company?.name || sub.companyName || 'Unknown Company',
+          submissionDate: sub.submittedAt || sub.createdAt,
+          submittedDate: sub.submittedAt || sub.createdAt,
+          lastUpdated: sub.lastUpdated || sub.updatedAt || sub.submittedAt || sub.createdAt,
+          bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+          notes: sub.notes,
+          contactPerson: sub.contact?.person || sub.contactPerson,
+          contactEmail: sub.contact?.email || sub.contactEmail,
+          contactPhone: sub.contact?.phone || sub.contactPhone,
+          applicationNumber: sub.applicationNumber
+        }));
+        setDbSubmissions(mappedSubmissions);
+      }
+    } catch (error) {
+      console.error('Error refreshing submissions:', error);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <PortalHeader
@@ -227,7 +406,7 @@ export function TenderProcurementDashboard() {
               <div className="lg:col-span-2">
                 <DashboardTab 
                   tenders={tenders}
-                  submissions={submissions}
+                  submissions={dbSubmissions}
                   onTenderCreate={handleNewTenderClick}
                   onTenderEdit={handleTenderEdit}
                   onTenderInfoClick={handleTenderInfoClick}
@@ -246,7 +425,7 @@ export function TenderProcurementDashboard() {
                   onEventClick={handleEventClick}
                   onBidPortalClick={handleBidPortalClick}
                   tenders={tenders}
-                  submissions={submissions}
+                  submissions={dbSubmissions}
                   userRole={userRole}
                 />
               </div>
@@ -269,18 +448,17 @@ export function TenderProcurementDashboard() {
 
           <TabsContent value="submissions">
             <SubmissionsTab 
-              submissions={submissions}
+              submissions={dbSubmissions}
               tenders={tenders}
               onDocumentsUpdate={handleDocumentsUpdate}
               onReviewClick={handleReviewClick}
               onTenderCreate={handleNewTenderClick}
-              userRole={userRole}
             />
           </TabsContent>
 
           <TabsContent value="evaluation">
             <EvaluationTab 
-              submissions={submissions}
+              submissions={dbSubmissions}
               tenders={tenders}
               onEvaluationComplete={handleEvaluationComplete}
               onReviewClick={handleReviewClick}

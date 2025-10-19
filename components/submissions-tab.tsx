@@ -80,54 +80,6 @@ export function SubmissionsTab({
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Fetch submissions on component mount and when filters change
-  useEffect(() => {
-    const loadSubmissions = async () => {
-      setLoading(true)
-      try {
-        const tenderId = tenderFilter !== 'all' ? tenderFilter : undefined
-        const status = statusFilter !== 'all' ? statusFilter : undefined
-        
-        const result = await fetchSubmissions(tenderId, status)
-        
-        // Map API submissions to your Submission type
-        const mappedSubmissions: Submission[] = result.data.map((sub: any) => ({
-          id: sub._id || sub.id,
-          tenderId: sub.tender?._id || sub.tender,
-          supplier: sub.company?.name || sub.companyName,
-          company: sub.company?.name || sub.companyName,
-          proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
-          amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
-          documents: sub.documents || [],
-          status: mapStatus(sub.status),
-          score: sub.score,
-          submittedAt: sub.submittedAt,
-          evaluation: sub.evaluation,
-          tenderTitle: sub.tender?.title || 'Unknown Tender',
-          companyName: sub.company?.name || sub.companyName,
-          submissionDate: sub.submittedAt,
-          submittedDate: sub.submittedAt,
-          lastUpdated: sub.lastUpdated || sub.submittedAt,
-          bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
-          notes: sub.notes,
-          contactPerson: sub.contact?.person || sub.contactPerson,
-          contactEmail: sub.contact?.email || sub.contactEmail,
-          contactPhone: sub.contact?.phone || sub.contactPhone,
-          applicationNumber: sub.applicationNumber
-        }))
-        setSubmissions(mappedSubmissions)
-      } catch (error) {
-        console.error('Error loading submissions:', error)
-        // Fallback to initial submissions if API fails
-        setSubmissions(initialSubmissions)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadSubmissions()
-  }, [statusFilter, tenderFilter, initialSubmissions])
-
   // Helper function to map API status to Submission status
   const mapStatus = (status: string): Submission['status'] => {
     const statusMap: { [key: string]: Submission['status'] } = {
@@ -141,43 +93,7 @@ export function SubmissionsTab({
     return statusMap[status] || 'submitted'
   }
 
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    try {
-      const result = await fetchSubmissions()
-      const mappedSubmissions: Submission[] = result.data.map((sub: any) => ({
-        id: sub._id || sub.id,
-        tenderId: sub.tender?._id || sub.tender,
-        supplier: sub.company?.name || sub.companyName,
-        company: sub.company?.name || sub.companyName,
-        proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
-        amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
-        documents: sub.documents || [],
-        status: mapStatus(sub.status),
-        score: sub.score,
-        submittedAt: sub.submittedAt,
-        evaluation: sub.evaluation,
-        tenderTitle: sub.tender?.title || 'Unknown Tender',
-        companyName: sub.company?.name || sub.companyName,
-        submissionDate: sub.submittedAt,
-        submittedDate: sub.submittedAt,
-        lastUpdated: sub.lastUpdated || sub.submittedAt,
-        bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
-        notes: sub.notes,
-        contactPerson: sub.contact?.person || sub.contactPerson,
-        contactEmail: sub.contact?.email || sub.contactEmail,
-        contactPhone: sub.contact?.phone || sub.contactPhone,
-        applicationNumber: sub.applicationNumber
-      }))
-      setSubmissions(mappedSubmissions)
-      onRefresh?.()
-    } catch (error) {
-      console.error('Error refreshing submissions:', error)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
+  // Helper function to format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
@@ -185,6 +101,91 @@ export function SubmissionsTab({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
+  }
+
+  // Helper function to map API submission to Submission type
+  const mapApiSubmissionToSubmission = (sub: any): Submission => {
+    // Get the tender title - handle both populated tender and tender ID
+    let tenderTitle = 'Unknown Tender';
+    if (sub.tender) {
+      tenderTitle = typeof sub.tender === 'object' ? sub.tender.title : 'Tender';
+    }
+
+    // Get company name - handle both populated company and company object
+    let companyName = 'Unknown Company';
+    if (sub.company) {
+      companyName = typeof sub.company === 'string' ? sub.company : sub.company.name;
+    }
+
+    return {
+      id: sub._id || sub.id,
+      tenderId: (typeof sub.tender === 'object' ? sub.tender._id : sub.tender) || sub.tenderId,
+      supplier: companyName,
+      company: companyName,
+      proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+      amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+      documents: sub.documents || [],
+      status: mapStatus(sub.status),
+      score: sub.score || 0,
+      submittedAt: sub.submittedAt || sub.createdAt,
+      evaluation: sub.evaluation,
+      tenderTitle: tenderTitle,
+      companyName: companyName,
+      submissionDate: sub.submittedAt || sub.createdAt,
+      submittedDate: sub.submittedAt || sub.createdAt,
+      lastUpdated: sub.lastUpdated || sub.updatedAt || sub.submittedAt || sub.createdAt,
+      bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+      notes: sub.notes,
+      contactPerson: sub.contact?.person || sub.contactPerson,
+      contactEmail: sub.contact?.email || sub.contactEmail,
+      contactPhone: sub.contact?.phone || sub.contactPhone,
+      applicationNumber: sub.applicationNumber,
+      // Additional fields from your model that might be useful
+      companyRegistration: sub.company?.registrationNumber,
+      taxNumber: sub.company?.taxNumber,
+      bbbeeStatus: sub.compliance?.bbbeeStatus,
+      bbbeeLevel: sub.compliance?.bbbeeLevel,
+      complianceStatus: sub.compliance?.taxCompliance ? 'compliant' : 'non-compliant'
+    }
+  }
+
+  // Fetch submissions on component mount and when filters change
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      setLoading(true)
+      try {
+        const tenderId = tenderFilter !== 'all' ? tenderFilter : undefined
+        const status = statusFilter !== 'all' ? statusFilter : undefined
+        
+        const result = await fetchSubmissions(tenderId, status)
+        
+        // Map API submissions to your Submission type using the helper function
+        const mappedSubmissions: Submission[] = result.data.map(mapApiSubmissionToSubmission)
+        setSubmissions(mappedSubmissions)
+      } catch (error) {
+        console.error('Error loading submissions:', error)
+        // Fallback to initial submissions if API fails
+        setSubmissions(initialSubmissions)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSubmissions()
+  }, [statusFilter, tenderFilter, initialSubmissions])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      const result = await fetchSubmissions()
+      const mappedSubmissions: Submission[] = result.data.map(mapApiSubmissionToSubmission)
+      setSubmissions(mappedSubmissions)
+      onRefresh?.()
+    } catch (error) {
+      console.error('Error refreshing submissions:', error)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const getStatusIcon = (status: Submission['status']) => {
@@ -247,7 +248,8 @@ export function SubmissionsTab({
           submission.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
           submission.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           submission.applicationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase())
+          submission.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.tenderTitle?.toLowerCase().includes(searchTerm.toLowerCase())
         )
 
     // Step 4: Calculate statistics
@@ -296,7 +298,9 @@ export function SubmissionsTab({
       'Bid Amount', 
       'Status', 
       'Submitted Date',
-      'Score'
+      'Score',
+      'BBBEE Status',
+      'BBBEE Level'
     ]
     
     const csvData = uniqueSubmissions.map(sub => [
@@ -309,7 +313,9 @@ export function SubmissionsTab({
       sub.bidAmount || `R ${sub.amount?.toLocaleString()}`,
       sub.status.replace('_', ' ').toUpperCase(),
       new Date(sub.submittedAt).toLocaleDateString(),
-      sub.score?.toString() || 'N/A'
+      sub.score?.toString() || 'N/A',
+      sub.bbbeeStatus || 'N/A',
+      sub.bbbeeLevel || 'N/A'
     ])
 
     const csvContent = [

@@ -1,3 +1,4 @@
+// app/bidder-application/page.tsx
 "use client"
 
 import { useEffect, useState } from "react"
@@ -5,11 +6,65 @@ import { useSearchParams } from "next/navigation"
 import { TenderApplicationForm } from "@/components/tender-application-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Loader2, AlertCircle, FileText, Calendar, DollarSign, Users } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, FileText, Calendar, DollarSign, Users, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// API Client functions matching your hook structure
+// API Client for submissions
+class TenderApplicationAPI {
+  private static baseURL = '/api/tender-applications'
+
+  static async submitApplication(data: any) {
+    try {
+      console.log('Submitting application to:', this.baseURL)
+      const response = await fetch(this.baseURL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('Submission API response:', result)
+      return result
+    } catch (error) {
+      console.error('Error in submitApplication:', error)
+      throw error
+    }
+  }
+
+  static async uploadDocument(file: File, tenderId: string, applicationId: string) {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('tenderId', tenderId)
+      formData.append('applicationId', applicationId)
+
+      const response = await fetch(`${this.baseURL}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload document')
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error('Error uploading document:', error)
+      throw error
+    }
+  }
+}
+
+// Keep your existing TenderAPI class and helper functions from your original code
 class TenderAPI {
   private static baseURL = '/api/tenders';
 
@@ -72,7 +127,7 @@ class TenderAPI {
   }
 }
 
-// Helper functions from your hook
+// Keep your existing helper functions...
 const extractBudgetValue = (budget: string | number | undefined | null): number => {
   if (typeof budget === 'number') {
     return budget;
@@ -132,9 +187,7 @@ const extractContactPhone = (contactPerson: any): string => {
   return '';
 };
 
-// Function to map API tender data to your dashboard format
 const mapApiTenderToDashboard = (apiTender: any) => {
-  // Map API status to your dashboard status
   const statusMap = {
     'open': 'Open',
     'closed': 'Closed',
@@ -144,11 +197,9 @@ const mapApiTenderToDashboard = (apiTender: any) => {
     'draft': 'Draft'
   };
 
-  // Safely handle budget value
   const budgetValue = apiTender.value || apiTender.budget || 0;
   const formattedBudget = formatBudget(budgetValue, apiTender.currency);
 
-  // Safely extract contact information
   const contactPerson = extractContactPerson(apiTender.contactPerson);
   const contactEmail = extractContactEmail(apiTender.contactPerson) || apiTender.contactEmail || '';
   const contactPhone = extractContactPhone(apiTender.contactPerson) || apiTender.contactPhone || '';
@@ -186,12 +237,10 @@ const mapApiTenderToDashboard = (apiTender: any) => {
   };
 };
 
-// Function to fetch tender data from API
 async function fetchTenderById(tenderId: string) {
   try {
     console.log('Fetching tender data for ID:', tenderId)
     
-    // First try to get the specific tender by ID
     try {
       const response = await TenderAPI.getTenderById(tenderId)
       
@@ -203,11 +252,9 @@ async function fetchTenderById(tenderId: string) {
       console.warn('Failed to fetch tender by ID, trying to find in list:', idError)
     }
 
-    // If specific ID fetch fails, try to get all tenders and find the matching one
     const allTendersResponse = await TenderAPI.getTenders({ limit: 100 })
     
     if (allTendersResponse.success && allTendersResponse.data) {
-      // Find the tender by ID in the list
       const foundTender = allTendersResponse.data.find((tender: any) => {
         const tenderIdToCompare = tender._id || tender.id;
         return tenderIdToCompare === tenderId || 
@@ -239,6 +286,8 @@ export default function BidderApplicationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [submissionSuccess, setSubmissionSuccess] = useState(false)
+  const [submissionId, setSubmissionId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadTender = async () => {
@@ -277,85 +326,62 @@ export default function BidderApplicationPage() {
       console.log('Submitting application for tender:', tenderId)
       console.log('Application data:', applicationData)
       
-      // Here you would typically send the data to your backend
-      const TenderApplicationAPI = {
-        baseURL: '/api/tender-applications',
-        
-        async submitApplication(data: any) {
-          const response = await fetch(this.baseURL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          })
-
-          if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.message || 'Failed to submit application')
-          }
-
-          return response.json()
-        },
-
-        async uploadDocument(file: File, tenderId: string, applicationId: string) {
-          const formData = new FormData()
-          formData.append('file', file)
-          formData.append('tenderId', tenderId)
-          formData.append('applicationId', applicationId)
-
-          const response = await fetch(`${this.baseURL}/documents`, {
-            method: 'POST',
-            body: formData,
-          })
-
-          if (!response.ok) {
-            throw new Error('Failed to upload document')
-          }
-
-          return response.json()
-        }
-      }
-
-      // Prepare application data for submission
+      // Prepare submission data
       const submissionData = {
         ...applicationData,
         tenderId: tender.id,
         tenderTitle: tender.title,
         tenderReference: tender.referenceNumber,
         submittedAt: new Date().toISOString(),
-        status: 'submitted'
+        status: 'submitted',
+        // Remove file objects from the data sent to API (handle separately if needed)
+        uploadedDocuments: applicationData.uploadedDocuments.map((doc: any) => ({
+          name: doc.name,
+          type: doc.type,
+          size: doc.file.size
+        })),
+        supportingDocuments: applicationData.supportingDocuments.map((doc: any) => ({
+          name: doc.name,
+          type: doc.type,
+          size: doc.file.size
+        }))
       }
 
       // Submit to API
       const response = await TenderApplicationAPI.submitApplication(submissionData)
       
       if (response.success) {
-        // Upload documents if application was created successfully
-        if (response.data.id) {
-          const applicationId = response.data.id
-          
+        const newSubmissionId = response.data.id || response.data.submissionId
+        setSubmissionId(newSubmissionId)
+        setSubmissionSuccess(true)
+        
+        // Optional: Handle file uploads separately if your API supports it
+        try {
           // Upload main documents
-          for (const file of applicationData.uploadedDocuments) {
-            await TenderApplicationAPI.uploadDocument(file, tender.id, applicationId)
+          for (const fileDoc of applicationData.uploadedDocuments) {
+            await TenderApplicationAPI.uploadDocument(fileDoc.file, tender.id, newSubmissionId)
           }
           
           // Upload supporting documents
-          for (const doc of applicationData.supportingDocuments) {
-            await TenderApplicationAPI.uploadDocument(doc.file, tender.id, applicationId)
+          for (const fileDoc of applicationData.supportingDocuments) {
+            await TenderApplicationAPI.uploadDocument(fileDoc.file, tender.id, newSubmissionId)
           }
+        } catch (uploadError) {
+          console.warn('Document upload failed, but submission was successful:', uploadError)
         }
 
-        // Show success message
-        alert('Application submitted successfully! Your submission is now under review. You will receive a confirmation email shortly.')
+        // Close the form after successful submission
+        setTimeout(() => {
+          setShowApplicationForm(false)
+        }, 2000)
         
-        // Close the form
-        setShowApplicationForm(false)
       } else {
         throw new Error(response.message || 'Failed to submit application')
       }
       
     } catch (error: any) {
       console.error('Error submitting application:', error)
-      alert(error.message || 'Failed to submit application. Please try again.')
+      throw new Error(error.message || 'Failed to submit application. Please try again.')
     }
   }
 
@@ -463,8 +489,55 @@ export default function BidderApplicationPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {!showApplicationForm ? (
+        {submissionSuccess ? (
+          <div className="max-w-2xl mx-auto">
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-green-900">Application Submitted Successfully!</h2>
+                    <p className="text-green-700 mt-2">
+                      Your bid application for <strong>{tender.title}</strong> has been submitted.
+                    </p>
+                    {submissionId && (
+                      <p className="text-sm text-green-600 mt-1">
+                        Reference Number: <strong>{submissionId}</strong>
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2 text-sm text-green-800">
+                    <p>You will receive a confirmation email shortly.</p>
+                    <p>You can track your application status in the supplier portal.</p>
+                  </div>
+                  <div className="flex gap-4 mt-4">
+                    <Button asChild>
+                      <Link href="/">
+                        Return to Portal
+                      </Link>
+                    </Button>
+                    <Button variant="outline" onClick={() => setSubmissionSuccess(false)}>
+                      View Tender Details
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : !showApplicationForm ? (
           <div className="max-w-4xl mx-auto space-y-6">
+            {/* Success Alert after submission */}
+            {submissionSuccess && (
+              <Alert className="bg-green-50 border-green-200">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  Your application has been submitted successfully! Submission ID: {submissionId}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Tender Overview */}
             <Card>
               <CardHeader>

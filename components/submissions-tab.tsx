@@ -1,10 +1,60 @@
+// components/submissions-tab.tsx
+"use client"
+
+import { useState, useMemo, useEffect } from "react"
 import { Submission, Tender } from "../types"
 import { SubmissionCard } from "./submission-card"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, Plus, Search, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useState, useMemo } from "react"
+import { Badge } from "@/components/ui/badge"
+import { 
+  FileText, 
+  Plus, 
+  Search, 
+  Filter, 
+  Download, 
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Award,
+  BarChart3
+} from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+// API function to fetch submissions
+async function fetchSubmissions(tenderId?: string, status?: string, page: number = 1, limit: number = 50) {
+  try {
+    const params = new URLSearchParams()
+    if (tenderId) {
+      params.append('tenderId', tenderId)
+    }
+    if (status) {
+      params.append('status', status)
+    }
+    params.append('page', page.toString())
+    params.append('limit', limit.toString())
+
+    const response = await fetch(`/api/tender-applications?${params.toString()}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch submissions')
+    }
+
+    const result = await response.json()
+    return result.success ? result : { data: [], pagination: { total: 0, pages: 0 } }
+  } catch (error) {
+    console.error('Error fetching submissions:', error)
+    return { data: [], pagination: { total: 0, pages: 0 } }
+  }
+}
 
 interface SubmissionsTabProps {
   submissions: Submission[]
@@ -12,18 +62,165 @@ interface SubmissionsTabProps {
   onDocumentsUpdate: (submissionId: string, documents: any[]) => void
   onReviewClick: (submission: Submission) => void
   onTenderCreate?: () => void
+  onRefresh?: () => void
 }
 
 export function SubmissionsTab({ 
-  submissions, 
+  submissions: initialSubmissions, 
   tenders, 
   onDocumentsUpdate, 
   onReviewClick,
-  onTenderCreate 
+  onTenderCreate,
+  onRefresh
 }: SubmissionsTabProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  
-  // CRITICAL FIX: Ensure submissions are unique and only for existing tenders
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [tenderFilter, setTenderFilter] = useState("all")
+  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions)
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Fetch submissions on component mount and when filters change
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      setLoading(true)
+      try {
+        const tenderId = tenderFilter !== 'all' ? tenderFilter : undefined
+        const status = statusFilter !== 'all' ? statusFilter : undefined
+        
+        const result = await fetchSubmissions(tenderId, status)
+        
+        // Map API submissions to your Submission type
+        const mappedSubmissions: Submission[] = result.data.map((sub: any) => ({
+          id: sub._id || sub.id,
+          tenderId: sub.tender?._id || sub.tender,
+          supplier: sub.company?.name || sub.companyName,
+          company: sub.company?.name || sub.companyName,
+          proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+          amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+          documents: sub.documents || [],
+          status: mapStatus(sub.status),
+          score: sub.score,
+          submittedAt: sub.submittedAt,
+          evaluation: sub.evaluation,
+          tenderTitle: sub.tender?.title || 'Unknown Tender',
+          companyName: sub.company?.name || sub.companyName,
+          submissionDate: sub.submittedAt,
+          submittedDate: sub.submittedAt,
+          lastUpdated: sub.lastUpdated || sub.submittedAt,
+          bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+          notes: sub.notes,
+          contactPerson: sub.contact?.person || sub.contactPerson,
+          contactEmail: sub.contact?.email || sub.contactEmail,
+          contactPhone: sub.contact?.phone || sub.contactPhone,
+          applicationNumber: sub.applicationNumber
+        }))
+        setSubmissions(mappedSubmissions)
+      } catch (error) {
+        console.error('Error loading submissions:', error)
+        // Fallback to initial submissions if API fails
+        setSubmissions(initialSubmissions)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSubmissions()
+  }, [statusFilter, tenderFilter, initialSubmissions])
+
+  // Helper function to map API status to Submission status
+  const mapStatus = (status: string): Submission['status'] => {
+    const statusMap: { [key: string]: Submission['status'] } = {
+      'submitted': 'submitted',
+      'under_review': 'under_review',
+      'evaluated': 'evaluated',
+      'awarded': 'awarded',
+      'rejected': 'rejected',
+      'under review': 'under_review'
+    }
+    return statusMap[status] || 'submitted'
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      const result = await fetchSubmissions()
+      const mappedSubmissions: Submission[] = result.data.map((sub: any) => ({
+        id: sub._id || sub.id,
+        tenderId: sub.tender?._id || sub.tender,
+        supplier: sub.company?.name || sub.companyName,
+        company: sub.company?.name || sub.companyName,
+        proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
+        amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
+        documents: sub.documents || [],
+        status: mapStatus(sub.status),
+        score: sub.score,
+        submittedAt: sub.submittedAt,
+        evaluation: sub.evaluation,
+        tenderTitle: sub.tender?.title || 'Unknown Tender',
+        companyName: sub.company?.name || sub.companyName,
+        submissionDate: sub.submittedAt,
+        submittedDate: sub.submittedAt,
+        lastUpdated: sub.lastUpdated || sub.submittedAt,
+        bidAmount: formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || 0),
+        notes: sub.notes,
+        contactPerson: sub.contact?.person || sub.contactPerson,
+        contactEmail: sub.contact?.email || sub.contactEmail,
+        contactPhone: sub.contact?.phone || sub.contactPhone,
+        applicationNumber: sub.applicationNumber
+      }))
+      setSubmissions(mappedSubmissions)
+      onRefresh?.()
+    } catch (error) {
+      console.error('Error refreshing submissions:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-ZA', {
+      style: 'currency',
+      currency: 'ZAR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  const getStatusIcon = (status: Submission['status']) => {
+    switch (status) {
+      case 'submitted':
+        return <FileText className="h-4 w-4 text-blue-500" />
+      case 'under_review':
+        return <Clock className="h-4 w-4 text-yellow-500" />
+      case 'evaluated':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'awarded':
+        return <Award className="h-4 w-4 text-purple-500" />
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <FileText className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getStatusColor = (status: Submission['status']) => {
+    switch (status) {
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'under_review':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'evaluated':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'awarded':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   const { uniqueSubmissions, filteredSubmissions, submissionStats } = useMemo(() => {
     // Step 1: Get all valid tender IDs
     const validTenderIds = new Set(tenders.map(tender => tender.id))
@@ -47,15 +244,28 @@ export function SubmissionsTab({
       : uniqueSubmissions.filter(submission =>
           submission.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
           submission.tenderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.status.toLowerCase().includes(searchTerm.toLowerCase())
+          submission.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.applicationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          submission.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase())
         )
 
     // Step 4: Calculate statistics
+    const total = uniqueSubmissions.length
+    const submitted = uniqueSubmissions.filter(sub => sub.status === "submitted").length
+    const underReview = uniqueSubmissions.filter(sub => sub.status === "under_review").length
+    const evaluated = uniqueSubmissions.filter(sub => sub.status === "evaluated").length
+    const awarded = uniqueSubmissions.filter(sub => sub.status === "awarded").length
+    const rejected = uniqueSubmissions.filter(sub => sub.status === "rejected").length
+
     const submissionStats = {
-      total: uniqueSubmissions.length,
-      underReview: uniqueSubmissions.filter(sub => sub.status === "Under Review").length,
-      evaluated: uniqueSubmissions.filter(sub => sub.status === "Evaluated").length,
-      compliant: uniqueSubmissions.filter(sub => sub.status === "Compliant").length
+      total,
+      submitted,
+      underReview,
+      evaluated,
+      awarded,
+      rejected,
+      compliant: evaluated + awarded // Consider evaluated and awarded as compliant
     }
 
     return { 
@@ -74,6 +284,67 @@ export function SubmissionsTab({
     return tender ? tender.title : tenderId
   }
 
+  // Export submissions as CSV
+  const exportSubmissions = () => {
+    const headers = [
+      'Application Number',
+      'Tender', 
+      'Supplier', 
+      'Company', 
+      'Contact Person',
+      'Contact Email',
+      'Bid Amount', 
+      'Status', 
+      'Submitted Date',
+      'Score'
+    ]
+    
+    const csvData = uniqueSubmissions.map(sub => [
+      sub.applicationNumber || sub.id,
+      getTenderTitle(sub.tenderId),
+      sub.supplier,
+      sub.companyName || sub.company,
+      sub.contactPerson || 'N/A',
+      sub.contactEmail || 'N/A',
+      sub.bidAmount || `R ${sub.amount?.toLocaleString()}`,
+      sub.status.replace('_', ' ').toUpperCase(),
+      new Date(sub.submittedAt).toLocaleDateString(),
+      sub.score?.toString() || 'N/A'
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `submissions-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Submission Management</h2>
+            <p className="text-muted-foreground">Loading submissions...</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading submissions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -83,26 +354,55 @@ export function SubmissionsTab({
             Review and manage {uniqueSubmissions.length} submission{uniqueSubmissions.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {hasTenders && (
-          <Button onClick={onTenderCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Tender
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <Loader2 className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        )}
+          {hasSubmissions && (
+            <Button variant="outline" onClick={exportSubmissions}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          )}
+          {hasTenders && onTenderCreate && (
+            <Button onClick={onTenderCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Tender
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Submission Statistics - Only show when there are submissions */}
+      {/* Submission Statistics */}
       {hasSubmissions && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold">{submissionStats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total Submissions</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
                 </div>
                 <div className="bg-blue-100 p-2 rounded-full">
                   <FileText className="h-4 w-4 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{submissionStats.submitted}</p>
+                  <p className="text-sm text-muted-foreground">Submitted</p>
+                </div>
+                <div className="bg-gray-100 p-2 rounded-full">
+                  <FileText className="h-4 w-4 text-gray-600" />
                 </div>
               </div>
             </CardContent>
@@ -115,7 +415,7 @@ export function SubmissionsTab({
                   <p className="text-sm text-muted-foreground">Under Review</p>
                 </div>
                 <div className="bg-yellow-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-yellow-600" />
+                  <Clock className="h-4 w-4 text-yellow-600" />
                 </div>
               </div>
             </CardContent>
@@ -128,7 +428,7 @@ export function SubmissionsTab({
                   <p className="text-sm text-muted-foreground">Evaluated</p>
                 </div>
                 <div className="bg-green-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -137,11 +437,24 @@ export function SubmissionsTab({
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{submissionStats.compliant}</p>
-                  <p className="text-sm text-muted-foreground">Compliant</p>
+                  <p className="text-2xl font-bold">{submissionStats.awarded}</p>
+                  <p className="text-sm text-muted-foreground">Awarded</p>
                 </div>
                 <div className="bg-purple-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-purple-600" />
+                  <Award className="h-4 w-4 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{submissionStats.rejected}</p>
+                  <p className="text-sm text-muted-foreground">Rejected</p>
+                </div>
+                <div className="bg-red-100 p-2 rounded-full">
+                  <XCircle className="h-4 w-4 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -149,22 +462,50 @@ export function SubmissionsTab({
         </div>
       )}
 
-      {/* Search and Filter - Only show when there are submissions */}
+      {/* Search and Filter */}
       {hasSubmissions && (
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search submissions by supplier, tender ID, or status..." 
+              placeholder="Search submissions by supplier, tender ID, application number, or status..." 
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="under_review">Under Review</SelectItem>
+                <SelectItem value="evaluated">Evaluated</SelectItem>
+                <SelectItem value="awarded">Awarded</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={tenderFilter} onValueChange={setTenderFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by tender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tenders</SelectItem>
+                {tenders.map(tender => (
+                  <SelectItem key={tender.id} value={tender.id}>
+                    {tender.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              More Filters
+            </Button>
+          </div>
         </div>
       )}
 
@@ -185,7 +526,11 @@ export function SubmissionsTab({
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">No submissions found matching your search criteria.</p>
+                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Submissions Found</h3>
+                  <p className="text-muted-foreground">
+                    No submissions match your search criteria. Try adjusting your filters.
+                  </p>
                 </CardContent>
               </Card>
             )
@@ -217,7 +562,7 @@ export function SubmissionsTab({
               </p>
               {onTenderCreate && (
                 <Button onClick={onTenderCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-2" />
                   Create Your First Tender
                 </Button>
               )}
@@ -226,31 +571,42 @@ export function SubmissionsTab({
         )}
       </div>
 
-      {/* Submission Status Summary - Only show when there are submissions */}
+      {/* Submission Status Summary */}
       {hasSubmissions && (
         <Card>
           <CardHeader>
-            <CardTitle>Submission Status Overview</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Submission Status Overview
+            </CardTitle>
             <CardDescription>Current status distribution of all submissions</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {Object.entries({
-                "Under Review": submissionStats.underReview,
-                "Evaluated": submissionStats.evaluated,
-                "Compliant": submissionStats.compliant,
-                "Other": submissionStats.total - submissionStats.underReview - submissionStats.evaluated - submissionStats.compliant
-              }).map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{status}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{count}</span>
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="h-2 rounded-full bg-blue-600"
-                        style={{ width: `${submissionStats.total > 0 ? (count / submissionStats.total) * 100 : 0}%` }}
-                      />
+            <div className="space-y-4">
+              {[
+                { status: "Submitted", count: submissionStats.submitted, color: "bg-gray-500" },
+                { status: "Under Review", count: submissionStats.underReview, color: "bg-yellow-500" },
+                { status: "Evaluated", count: submissionStats.evaluated, color: "bg-green-500" },
+                { status: "Awarded", count: submissionStats.awarded, color: "bg-purple-500" },
+                { status: "Rejected", count: submissionStats.rejected, color: "bg-red-500" },
+              ].map((item) => (
+                <div key={item.status} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${item.color}`} />
+                      <span className="text-sm font-medium">{item.status}</span>
                     </div>
+                    <span className="text-sm text-muted-foreground">
+                      {item.count} ({submissionStats.total > 0 ? Math.round((item.count / submissionStats.total) * 100) : 0}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${item.color}`}
+                      style={{ 
+                        width: `${submissionStats.total > 0 ? (item.count / submissionStats.total) * 100 : 0}%` 
+                      }}
+                    />
                   </div>
                 </div>
               ))}

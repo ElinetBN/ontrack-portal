@@ -1,48 +1,37 @@
+// lib/mongodb.js
 import mongoose from 'mongoose';
 
-const MONGO_URI = process.env.MONGO_URI!;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tenderportal';
 
-if (!MONGO_URI) {
-  throw new Error('Please define MONGO_URI environment variable');
+if (!MONGODB_URI) {
+  throw new Error(
+    'Please define the MONGODB_URI environment variable inside .env.local'
+  );
 }
 
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
-declare global {
-  var mongoose: MongooseCache | undefined;
-}
-
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
-
-if (!global.mongoose) {
-  global.mongoose = cached;
-}
-
-export async function connectDB(): Promise<typeof mongoose> {
+export async function connectDB() {
   if (cached.conn) {
-    console.log('Using cached MongoDB connection');
     return cached.conn;
   }
 
   if (!cached.promise) {
-    console.log('Creating new MongoDB connection');
     const opts = {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGO_URI, opts)
-      .then((mongoose) => {
-        console.log('MongoDB connected successfully');
-        return mongoose;
-      })
-      .catch((error) => {
-        console.error('MongoDB connection error:', error);
-        cached.promise = null;
-        throw error;
-      });
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('✅ MongoDB Connected Successfully');
+      return mongoose;
+    }).catch((error) => {
+      console.error('❌ MongoDB Connection Error:', error);
+      throw error;
+    });
   }
 
   try {
@@ -53,9 +42,4 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   return cached.conn;
-}
-
-// Helper function to check connection status
-export function getConnectionStatus(): string {
-  return mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
 }

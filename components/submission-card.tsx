@@ -1,649 +1,94 @@
+// components/submission-card.tsx
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Submission, Tender } from "../types"
-import { SubmissionCard } from "./submission-card"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Award,
-  BarChart3
-} from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { FileText, Calendar, Eye } from "lucide-react"
+import { Submission, Document } from "../types"
 
-// API function to fetch submissions
-async function fetchSubmissions(tenderId?: string, status?: string, page: number = 1, limit: number = 50) {
-  try {
-    const params = new URLSearchParams()
-    if (tenderId && tenderId !== 'all') {
-      params.append('tenderId', tenderId)
-    }
-    if (status && status !== 'all') {
-      params.append('status', status)
-    }
-    params.append('page', page.toString())
-    params.append('limit', limit.toString())
-
-    console.log('🔍 Fetching submissions with params:', params.toString())
-    
-    const response = await fetch(`/api/tender-applications?${params.toString()}`)
-    console.log('📡 Response status:', response.status)
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch submissions: ${response.status}`)
-    }
-
-    const result = await response.json()
-    console.log('📊 API result:', result)
-    
-    return result.success ? result : { data: [], pagination: { total: 0, pages: 0 } }
-  } catch (error) {
-    console.error('❌ Error fetching submissions:', error)
-    return { data: [], pagination: { total: 0, pages: 0 } }
-  }
-}
-
-interface SubmissionsTabProps {
-  tenders: Tender[]
-  onDocumentsUpdate: (submissionId: string, documents: any[]) => void
+interface SubmissionCardProps {
+  submission: Submission
+  onDocumentsUpdate: (submissionId: string, documents: Document[]) => void
   onReviewClick: (submission: Submission) => void
-  onTenderCreate?: () => void
-  onRefresh?: () => void
 }
 
-export function SubmissionsTab({ 
-  tenders, 
-  onDocumentsUpdate, 
-  onReviewClick,
-  onTenderCreate,
-  onRefresh
-}: SubmissionsTabProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [tenderFilter, setTenderFilter] = useState("all")
-  const [submissions, setSubmissions] = useState<Submission[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Helper function to map API status to Submission status
-  const mapStatus = (status: string): Submission['status'] => {
-    const statusMap: { [key: string]: Submission['status'] } = {
-      'submitted': 'submitted',
-      'under_review': 'under_review',
-      'evaluated': 'evaluated',
-      'awarded': 'awarded',
-      'rejected': 'rejected',
-      'under review': 'under_review'
-    }
-    return statusMap[status] || 'submitted'
-  }
-
-  // Helper function to map API submission to Submission type
-  const mapApiSubmissionToSubmission = (sub: any): Submission => {
-    console.log('🔄 Mapping API submission:', sub)
-    
-    return {
-      id: sub._id || sub.id,
-      tenderId: (typeof sub.tender === 'object' ? sub.tender._id : sub.tender) || sub.tenderId,
-      supplier: sub.company?.name || sub.companyName || sub.supplier || 'Unknown Supplier',
-      company: sub.company?.name || sub.companyName || 'Unknown Company',
-      proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
-      amount: sub.financial?.totalBidAmount || sub.totalBidAmount || sub.amount || 0,
-      documents: sub.documents || [],
-      status: mapStatus(sub.status),
-      score: sub.score || 0,
-      submittedAt: sub.submittedAt || sub.createdAt,
-      evaluation: sub.evaluation,
-      tenderTitle: sub.tender?.title || sub.tenderTitle || 'Unknown Tender',
-      companyName: sub.company?.name || sub.companyName || 'Unknown Company',
-      submissionDate: sub.submittedAt || sub.submissionDate || sub.createdAt,
-      submittedDate: sub.submittedAt || sub.submittedDate || sub.createdAt,
-      lastUpdated: sub.lastUpdated || sub.updatedAt || sub.submittedAt || sub.createdAt,
-      bidAmount: sub.bidAmount || formatCurrency(sub.financial?.totalBidAmount || sub.totalBidAmount || sub.amount || 0),
-      notes: sub.notes,
-      contactPerson: sub.contact?.person || sub.contactPerson,
-      contactEmail: sub.contact?.email || sub.contactEmail,
-      contactPhone: sub.contact?.phone || sub.contactPhone,
-      applicationNumber: sub.applicationNumber,
-      // Additional fields
-      companyRegistration: sub.company?.registrationNumber,
-      taxNumber: sub.company?.taxNumber,
-      bbbeeStatus: sub.compliance?.bbbeeStatus,
-      bbbeeLevel: sub.compliance?.bbbeeLevel,
-      complianceStatus: sub.compliance?.taxCompliance ? 'compliant' : 'non-compliant'
-    }
-  }
-
-  // Helper function to format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
-
-  // Fetch submissions on component mount and when filters change
-  useEffect(() => {
-    const loadSubmissions = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const tenderId = tenderFilter !== 'all' ? tenderFilter : undefined
-        const status = statusFilter !== 'all' ? statusFilter : undefined
-        
-        console.log('🎯 Loading submissions with filters:', { tenderId, status })
-        
-        const result = await fetchSubmissions(tenderId, status)
-        
-        if (result.data && Array.isArray(result.data)) {
-          // Map API submissions to your Submission type using the helper function
-          const mappedSubmissions: Submission[] = result.data.map(mapApiSubmissionToSubmission)
-          console.log('✅ Mapped submissions:', mappedSubmissions.length)
-          setSubmissions(mappedSubmissions)
-        } else {
-          console.warn('⚠️ No data returned from API')
-          setSubmissions([])
-        }
-      } catch (error) {
-        console.error('❌ Error loading submissions:', error)
-        setError(error instanceof Error ? error.message : 'Failed to load submissions')
-        setSubmissions([])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadSubmissions()
-  }, [statusFilter, tenderFilter])
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    setError(null)
-    try {
-      const result = await fetchSubmissions()
-      if (result.data && Array.isArray(result.data)) {
-        const mappedSubmissions: Submission[] = result.data.map(mapApiSubmissionToSubmission)
-        setSubmissions(mappedSubmissions)
-        onRefresh?.()
-      }
-    } catch (error) {
-      console.error('Error refreshing submissions:', error)
-      setError(error instanceof Error ? error.message : 'Failed to refresh submissions')
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  const getStatusIcon = (status: Submission['status']) => {
-    switch (status) {
-      case 'submitted':
-        return <FileText className="h-4 w-4 text-blue-500" />
-      case 'under_review':
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      case 'evaluated':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'awarded':
-        return <Award className="h-4 w-4 text-purple-500" />
-      case 'rejected':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      default:
-        return <FileText className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  const getStatusColor = (status: Submission['status']) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'under_review':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'evaluated':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'awarded':
-        return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const { uniqueSubmissions, filteredSubmissions, submissionStats } = useMemo(() => {
-    // Remove duplicate submissions by ID
-    const seenSubmissionIds = new Set()
-    const uniqueSubmissions = submissions.filter(submission => {
-      if (seenSubmissionIds.has(submission.id)) {
-        return false
-      }
-      seenSubmissionIds.add(submission.id)
-      return true
+export function SubmissionCard({ submission, onReviewClick }: SubmissionCardProps) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     })
-    
-    // Apply search filter
-    const filteredSubmissions = searchTerm.trim() === "" 
-      ? uniqueSubmissions 
-      : uniqueSubmissions.filter(submission =>
-          submission.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.tenderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.applicationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.tenderTitle?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+  }
 
-    // Calculate statistics
-    const total = uniqueSubmissions.length
-    const submitted = uniqueSubmissions.filter(sub => sub.status === "submitted").length
-    const underReview = uniqueSubmissions.filter(sub => sub.status === "under_review").length
-    const evaluated = uniqueSubmissions.filter(sub => sub.status === "evaluated").length
-    const awarded = uniqueSubmissions.filter(sub => sub.status === "awarded").length
-    const rejected = uniqueSubmissions.filter(sub => sub.status === "rejected").length
-
-    const submissionStats = {
-      total,
-      submitted,
-      underReview,
-      evaluated,
-      awarded,
-      rejected,
-      compliant: evaluated + awarded
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case "submitted": return "secondary"
+      case "under_review": return "default"
+      case "evaluated": return "default"
+      case "awarded": return "default"
+      case "rejected": return "destructive"
+      default: return "secondary"
     }
+  }
 
-    return { 
-      uniqueSubmissions, 
-      filteredSubmissions, 
-      submissionStats 
+  const getStatusDisplayText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'submitted': 'Submitted',
+      'under_review': 'Under Review',
+      'evaluated': 'Evaluated',
+      'awarded': 'Awarded',
+      'rejected': 'Rejected'
     }
-  }, [submissions, searchTerm])
-
-  const hasTenders = tenders.length > 0
-  const hasSubmissions = uniqueSubmissions.length > 0
-
-  // Get tender title for display
-  const getTenderTitle = (tenderId: string) => {
-    const tender = tenders.find(t => t.id === tenderId)
-    return tender ? tender.title : tenderId
-  }
-
-  // Export submissions as CSV
-  const exportSubmissions = () => {
-    const headers = [
-      'Application Number',
-      'Tender', 
-      'Supplier', 
-      'Company', 
-      'Contact Person',
-      'Contact Email',
-      'Bid Amount', 
-      'Status', 
-      'Submitted Date',
-      'Score',
-      'BBBEE Status',
-      'BBBEE Level'
-    ]
-    
-    const csvData = uniqueSubmissions.map(sub => [
-      sub.applicationNumber || sub.id,
-      getTenderTitle(sub.tenderId),
-      sub.supplier,
-      sub.companyName || sub.company,
-      sub.contactPerson || 'N/A',
-      sub.contactEmail || 'N/A',
-      sub.bidAmount || `R ${sub.amount?.toLocaleString()}`,
-      sub.status.replace('_', ' ').toUpperCase(),
-      new Date(sub.submittedAt).toLocaleDateString(),
-      sub.score?.toString() || 'N/A',
-      sub.bbbeeStatus || 'N/A',
-      sub.bbbeeLevel || 'N/A'
-    ])
-
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `submissions-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Submission Management</h2>
-            <p className="text-muted-foreground">Loading submissions...</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading submissions...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Submission Management</h2>
-            <p className="text-muted-foreground">Error loading submissions</p>
-          </div>
-        </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Failed to Load Submissions</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={handleRefresh}>
-              <Loader2 className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return statusMap[status] || status
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Submission Management</h2>
-          <p className="text-muted-foreground">
-            Review and manage {uniqueSubmissions.length} submission{uniqueSubmissions.length !== 1 ? 's' : ''}
-          </p>
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-lg">{submission.tenderTitle}</CardTitle>
+            <CardDescription>
+              Submitted by {submission.companyName}
+              {submission.applicationNumber && ` • Application #: ${submission.applicationNumber}`}
+            </CardDescription>
+          </div>
+          <Badge variant={getStatusVariant(submission.status)}>
+            {getStatusDisplayText(submission.status)}
+          </Badge>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <Loader2 className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          {hasSubmissions && (
-            <Button variant="outline" onClick={exportSubmissions}>
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-          )}
-          {hasTenders && onTenderCreate && (
-            <Button onClick={onTenderCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Tender
-            </Button>
-          )}
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>Submitted: {formatDate(submission.submissionDate)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileText className="h-4 w-4" />
+            <span>Documents: {submission.documents?.length || 0}</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Bid Amount: {submission.bidAmount}
+          </div>
         </div>
-      </div>
 
-      {/* Submission Statistics */}
-      {hasSubmissions && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.total}</p>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                </div>
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.submitted}</p>
-                  <p className="text-sm text-muted-foreground">Submitted</p>
-                </div>
-                <div className="bg-gray-100 p-2 rounded-full">
-                  <FileText className="h-4 w-4 text-gray-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.underReview}</p>
-                  <p className="text-sm text-muted-foreground">Under Review</p>
-                </div>
-                <div className="bg-yellow-100 p-2 rounded-full">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.evaluated}</p>
-                  <p className="text-sm text-muted-foreground">Evaluated</p>
-                </div>
-                <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.awarded}</p>
-                  <p className="text-sm text-muted-foreground">Awarded</p>
-                </div>
-                <div className="bg-purple-100 p-2 rounded-full">
-                  <Award className="h-4 w-4 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{submissionStats.rejected}</p>
-                  <p className="text-sm text-muted-foreground">Rejected</p>
-                </div>
-                <div className="bg-red-100 p-2 rounded-full">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Search and Filter */}
-      {hasSubmissions && (
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search submissions by supplier, tender ID, application number, or status..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Last updated: {formatDate(submission.lastUpdated)}</span>
           </div>
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="under_review">Under Review</SelectItem>
-                <SelectItem value="evaluated">Evaluated</SelectItem>
-                <SelectItem value="awarded">Awarded</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={tenderFilter} onValueChange={setTenderFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by tender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tenders</SelectItem>
-                {tenders.map(tender => (
-                  <SelectItem key={tender.id} value={tender.id}>
-                    {tender.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              More Filters
-            </Button>
+            <button 
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+              onClick={() => onReviewClick(submission)}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Review
+            </button>
           </div>
         </div>
-      )}
-
-      {/* Submissions List */}
-      <div className="space-y-4">
-        {hasTenders ? (
-          hasSubmissions ? (
-            filteredSubmissions.length > 0 ? (
-              filteredSubmissions.map((submission) => (
-                <SubmissionCard 
-                  key={submission.id} 
-                  submission={submission}
-                  onDocumentsUpdate={onDocumentsUpdate}
-                  onReviewClick={onReviewClick}
-                />
-              ))
-            ) : (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Submissions Found</h3>
-                  <p className="text-muted-foreground">
-                    No submissions match your search criteria. Try adjusting your filters.
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <FileText className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No Submissions Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  When suppliers submit bids for your tenders, they will appear here for review.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Make sure your tenders are published and shared with suppliers to start receiving submissions.
-                </p>
-              </CardContent>
-            </Card>
-          )
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-                <FileText className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No Tenders or Submissions</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first tender to start receiving submissions from suppliers.
-              </p>
-              {onTenderCreate && (
-                <Button onClick={onTenderCreate}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Tender
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Submission Status Summary */}
-      {hasSubmissions && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Submission Status Overview
-            </CardTitle>
-            <CardDescription>Current status distribution of all submissions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { status: "Submitted", count: submissionStats.submitted, color: "bg-gray-500" },
-                { status: "Under Review", count: submissionStats.underReview, color: "bg-yellow-500" },
-                { status: "Evaluated", count: submissionStats.evaluated, color: "bg-green-500" },
-                { status: "Awarded", count: submissionStats.awarded, color: "bg-purple-500" },
-                { status: "Rejected", count: submissionStats.rejected, color: "bg-red-500" },
-              ].map((item) => (
-                <div key={item.status} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                      <span className="text-sm font-medium">{item.status}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {item.count} ({submissionStats.total > 0 ? Math.round((item.count / submissionStats.total) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${item.color}`}
-                      style={{ 
-                        width: `${submissionStats.total > 0 ? (item.count / submissionStats.total) * 100 : 0}%` 
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

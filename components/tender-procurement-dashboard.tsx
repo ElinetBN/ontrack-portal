@@ -15,6 +15,7 @@ import { ReviewTab } from "./review-tab"
 import { TenderRegistrationPopup } from "./tender-registration-popup"
 import { TenderInfoPopup } from "./tender-info-popup"
 import { CalendarSidebar } from "./calendar-sidebar"
+import { TenderApplicationForm } from "./tender-application-form"
 
 // Import data and types
 import { initialTenders, initialSubmissions } from "../data/mock-data"
@@ -26,6 +27,8 @@ export function TenderProcurementDashboard() {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const [selectedTenderInfo, setSelectedTenderInfo] = useState<Tender | null>(null)
   const [showTenderInfo, setShowTenderInfo] = useState(false)
+  const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [selectedTenderForApplication, setSelectedTenderForApplication] = useState<Tender | null>(null)
 
   const {
     tenders,
@@ -35,10 +38,13 @@ export function TenderProcurementDashboard() {
     handleTenderDelete,
     handleDocumentsUpdate,
     handleEvaluationComplete,
-    handleTenderStatusChange
+    handleTenderStatusChange,
+    handleTenderPublish,
+    refreshTenders,
+    openBidderApplicationByLink
   } = useTenderManagement(initialTenders, initialSubmissions)
 
-  // Mock user role - you can replace this with actual authentication logic
+  // Mock user role
   const [userRole] = useState<'admin' | 'super_admin' | 'user'>('super_admin')
 
   const handleReviewClick = (submission: Submission) => {
@@ -52,19 +58,16 @@ export function TenderProcurementDashboard() {
   // Enhanced tender creation handler
   const handleTenderCreateWithRole = async (tenderData: any) => {
     try {
-      // Add user role information to tender data
       const tenderWithRole = {
         ...tenderData,
         createdBy: userRole,
         createdDate: new Date().toISOString(),
-        // Set status based on user role and action
         status: userRole === 'super_admin' && tenderData.status === 'published' ? 'Open' : 'Draft',
         requiresApproval: userRole !== 'super_admin'
       }
 
       const result = await handleTenderCreate(tenderWithRole)
       
-      // Show appropriate success message based on user role and action
       if (userRole === 'super_admin' && tenderData.status === 'published') {
         console.log('Tender published successfully by super admin')
       } else {
@@ -86,27 +89,62 @@ export function TenderProcurementDashboard() {
     }
   }
 
-  // Handle tender publishing
-  const handleTenderPublish = (tenderId: string) => {
-    const tender = tenders.find(t => t.id === tenderId)
-    if (tender && tender.status === "Draft") {
-      handleTenderUpdate(tenderId, { ...tender, status: "Open" })
-      console.log('Tender published:', tenderId)
-    }
-  }
-
   // Handle tender editing
   const handleTenderEdit = (tender: Tender) => {
-    // For now, we'll open the registration popup with the tender data
-    // You might want to implement a separate edit popup
     setSelectedTenderInfo(tender)
     setIsRegistrationOpen(true)
+  }
+
+  // Handle bidder application
+  const handleBidderApplication = (tender: Tender) => {
+    setSelectedTenderForApplication(tender)
+    setShowApplicationForm(true)
+  }
+
+  // Handle application submission
+  const handleApplicationSubmit = async (applicationData: any) => {
+    try {
+      console.log('Submitting application for tender:', selectedTenderForApplication?.id)
+      console.log('Application data:', applicationData)
+      
+      // Create a new submission
+      const newSubmission: Submission = {
+        id: `sub-${Date.now()}`,
+        tenderId: selectedTenderForApplication!.id,
+        supplier: applicationData.companyName,
+        company: applicationData.companyName,
+        companyName: applicationData.companyName,
+        proposal: applicationData.executiveSummary,
+        amount: applicationData.totalBidAmount,
+        bidAmount: `R ${applicationData.totalBidAmount?.toLocaleString() || '0'}`,
+        documents: applicationData.uploadedDocuments,
+        status: 'submitted',
+        submittedAt: new Date().toISOString(),
+        submissionDate: new Date().toISOString(),
+        submittedDate: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        tenderTitle: selectedTenderForApplication!.title,
+        notes: applicationData.technicalProposal?.substring(0, 200) + '...'
+      }
+
+      console.log('New submission created:', newSubmission)
+      
+      // Show success message
+      alert('Application submitted successfully! Your submission is now under review.')
+      
+      // Close the form
+      setShowApplicationForm(false)
+      setSelectedTenderForApplication(null)
+      
+    } catch (error) {
+      console.error('Error submitting application:', error)
+      alert('Failed to submit application. Please try again.')
+    }
   }
 
   // Calendar Sidebar Handlers
   const handleStatsClick = (statType: string, data: any) => {
     console.log('Stats clicked:', statType, data)
-    // Navigate to relevant tabs based on stat type
     if (statType === 'pendingRequests') {
       setActiveTab('submissions')
     } else if (statType === 'upcomingDeadlines' || statType === 'activeProjects') {
@@ -118,9 +156,7 @@ export function TenderProcurementDashboard() {
 
   const handleEventClick = (event: any) => {
     console.log('Event clicked:', event)
-    // Show event details or navigate to relevant section
     if (event.type === 'deadline') {
-      // Find related tender and show its info
       const relatedTender = tenders.find(t => 
         t.title.toLowerCase().includes(event.title.toLowerCase().split(' - ')[1]?.toLowerCase() || '')
       )
@@ -135,7 +171,6 @@ export function TenderProcurementDashboard() {
 
   const handleBidPortalClick = () => {
     console.log('Bid portal clicked')
-    // Navigate to submissions tab for bid management
     setActiveTab('submissions')
   }
 
@@ -147,8 +182,19 @@ export function TenderProcurementDashboard() {
 
   // Handle new tender creation from various components
   const handleNewTenderClick = () => {
-    setSelectedTenderInfo(null) // Clear any selected tender for new creation
+    setSelectedTenderInfo(null)
     setIsRegistrationOpen(true)
+  }
+
+  // Handle opening bidder application link - FIXED FUNCTION
+  const handleOpenBidderApplication = (link: string) => {
+    console.log('Opening bidder application link from dashboard:', link)
+    if (openBidderApplicationByLink) {
+      openBidderApplicationByLink(link)
+    } else {
+      // Fallback if the function is not available
+      window.open(link, '_blank', 'noopener,noreferrer')
+    }
   }
 
   return (
@@ -161,7 +207,7 @@ export function TenderProcurementDashboard() {
             <FileText className="h-6 w-6 text-white" />
           </div>
         }
-        userRole={userRole} // Pass user role to header if needed
+        userRole={userRole}
       />
 
       <main className="container mx-auto px-4 py-6">
@@ -188,6 +234,8 @@ export function TenderProcurementDashboard() {
                   onReviewClick={handleReviewClick}
                   onTenderDelete={handleTenderDeleteWithConfirmation}
                   onTenderPublish={handleTenderPublish}
+                  onBidderApplication={handleBidderApplication}
+                  onOpenBidderApplication={handleOpenBidderApplication}
                 />
               </div>
 
@@ -213,6 +261,8 @@ export function TenderProcurementDashboard() {
               onTenderInfoClick={handleTenderInfoClick}
               onTenderDelete={handleTenderDeleteWithConfirmation}
               onTenderPublish={handleTenderPublish}
+              onBidderApplication={handleBidderApplication}
+              onOpenBidderApplication={handleOpenBidderApplication}
               userRole={userRole}
             />
           </TabsContent>
@@ -256,13 +306,13 @@ export function TenderProcurementDashboard() {
         </Tabs>
       </main>
 
-      {/* Tender Registration Popup with User Role */}
+      {/* Tender Registration Popup */}
       <TenderRegistrationPopup 
         isOpen={isRegistrationOpen} 
         onClose={() => setIsRegistrationOpen(false)}
         onTenderCreate={handleTenderCreateWithRole}
         userRole={userRole}
-        editTender={selectedTenderInfo} // Pass the tender to edit if available
+        editTender={selectedTenderInfo}
       />
 
       {/* Tender Info Popup */}
@@ -273,9 +323,21 @@ export function TenderProcurementDashboard() {
         onEditTender={handleTenderEdit}
         onDeleteTender={handleTenderDeleteWithConfirmation}
         onPublishTender={handleTenderPublish}
+        onBidderApplication={handleBidderApplication}
       />
 
-      {/* User Role Badge in Corner (optional) */}
+      {/* Tender Application Form */}
+      <TenderApplicationForm
+        isOpen={showApplicationForm}
+        onClose={() => {
+          setShowApplicationForm(false)
+          setSelectedTenderForApplication(null)
+        }}
+        tender={selectedTenderForApplication}
+        onApply={handleApplicationSubmit}
+      />
+
+      {/* User Role Badge */}
       <div className="fixed bottom-4 right-4">
         <div className={`px-3 py-1 rounded-full text-xs font-medium ${
           userRole === 'super_admin' 

@@ -25,6 +25,7 @@ export interface Tender {
   submissionMethod: string;
   tenderFee: string;
   advertisementLink: string;
+  bidderApplicationLink: string;
   isDraft?: boolean;
   createdBy?: string;
   requiresApproval?: boolean;
@@ -241,6 +242,16 @@ const extractContactPhone = (contactPerson: any): string => {
   return '';
 };
 
+// Helper function to generate bidder application link
+const generateBidderApplicationLink = (tenderId: string, referenceNumber: string): string => {
+  // In development, use the current origin. In production, use your actual domain
+  const baseUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/bidder-application`
+    : 'https://your-portal.gov.za/bidder-application';
+  
+  return `${baseUrl}?tenderId=${encodeURIComponent(tenderId)}&ref=${encodeURIComponent(referenceNumber)}`;
+};
+
 // Helper function to map API tender data to your dashboard format
 const mapApiTenderToDashboard = (apiTender: any): Tender => {
   // Map API status to your dashboard status
@@ -262,8 +273,11 @@ const mapApiTenderToDashboard = (apiTender: any): Tender => {
   const contactEmail = extractContactEmail(apiTender.contactPerson) || apiTender.contactEmail || '';
   const contactPhone = extractContactPhone(apiTender.contactPerson) || apiTender.contactPhone || '';
 
+  const tenderId = apiTender._id || apiTender.id || `temp-${Date.now()}`;
+  const referenceNumber = apiTender.tenderNumber || apiTender.referenceNumber || `TND-${Date.now()}`;
+
   return {
-    id: apiTender._id || apiTender.id || `temp-${Date.now()}`,
+    id: tenderId,
     title: apiTender.title || 'Untitled Tender',
     department: apiTender.organization || apiTender.department || 'General',
     status: statusMap[apiTender.status] || 'Draft',
@@ -272,7 +286,7 @@ const mapApiTenderToDashboard = (apiTender: any): Tender => {
     submissions: apiTender.submissions || 0,
     category: apiTender.category || 'General',
     description: apiTender.description || '',
-    referenceNumber: apiTender.tenderNumber || apiTender.referenceNumber || `TND-${Date.now()}`,
+    referenceNumber: referenceNumber,
     requestedItems: apiTender.requirements || apiTender.requestedItems || [],
     createdDate: apiTender.createdAt || apiTender.publishDate || apiTender.createdDate || new Date().toISOString(),
     location: apiTender.location || '',
@@ -284,7 +298,8 @@ const mapApiTenderToDashboard = (apiTender: any): Tender => {
     contactPhone: contactPhone,
     submissionMethod: apiTender.submissionMethod || 'online',
     tenderFee: apiTender.tenderFee || 'No fee',
-    advertisementLink: apiTender.advertisementLink || `https://example.gov.za/tenders/${apiTender.tenderNumber || apiTender._id || apiTender.id}`,
+    advertisementLink: apiTender.advertisementLink || `https://example.gov.za/tenders/${referenceNumber}`,
+    bidderApplicationLink: apiTender.bidderApplicationLink || generateBidderApplicationLink(tenderId, referenceNumber),
     isDraft: apiTender.status === 'draft' || apiTender.status === 'pending' || apiTender.isDraft === true,
     createdBy: apiTender.createdBy,
     requiresApproval: apiTender.requiresApproval
@@ -326,7 +341,8 @@ const mapDashboardTenderToApi = (tender: Tender): any => {
     },
     submissionMethod: tender.submissionMethod || 'online',
     tenderFee: tender.tenderFee || 'No fee',
-    advertisementLink: tender.advertisementLink || ''
+    advertisementLink: tender.advertisementLink || '',
+    bidderApplicationLink: tender.bidderApplicationLink || generateBidderApplicationLink(tender.id, tender.referenceNumber)
   };
 };
 
@@ -387,7 +403,7 @@ const mockSubmissions: Submission[] = [
   }
 ];
 
-// Mock initial tenders data
+// Mock initial tenders data with proper bidder application links
 const mockTenders: Tender[] = [
   {
     id: '1',
@@ -412,6 +428,7 @@ const mockTenders: Tender[] = [
     submissionMethod: 'Online Portal',
     tenderFee: 'No fee',
     advertisementLink: 'https://example.gov.za/tenders/PW-2024-001',
+    bidderApplicationLink: generateBidderApplicationLink('1', 'PW-2024-001'),
     isDraft: false
   },
   {
@@ -437,6 +454,7 @@ const mockTenders: Tender[] = [
     submissionMethod: 'Email Submission',
     tenderFee: 'R 500',
     advertisementLink: 'https://example.gov.za/tenders/ICT-2024-002',
+    bidderApplicationLink: generateBidderApplicationLink('2', 'ICT-2024-002'),
     isDraft: false
   },
   {
@@ -462,6 +480,7 @@ const mockTenders: Tender[] = [
     submissionMethod: 'Online Portal',
     tenderFee: 'No fee',
     advertisementLink: '',
+    bidderApplicationLink: generateBidderApplicationLink('3', 'FM-2024-003'),
     isDraft: true
   }
 ];
@@ -525,16 +544,23 @@ export function useTenderManagement(initialTenders: Tender[] = mockTenders, init
       setLoading(true);
       setError(null);
 
+      // Generate bidder application link
+      const tenderId = `tender-${Date.now()}`;
+      const referenceNumber = tenderData.referenceNumber || `TND-${Date.now()}`;
+      const bidderApplicationLink = generateBidderApplicationLink(tenderId, referenceNumber);
+
       // Ensure tenderData has all required fields with defaults
       const completeTenderData = {
         ...tenderData,
+        id: tenderId,
         budget: tenderData.budget || 'R 0',
         submissions: 0,
         createdDate: new Date().toISOString(),
         status: tenderData.status || 'Draft',
         contactPerson: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.name : tenderData.contactPerson || '',
         contactEmail: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.email : tenderData.contactEmail || '',
-        contactPhone: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.phone : tenderData.contactPhone || ''
+        contactPhone: typeof tenderData.contactPerson === 'object' ? tenderData.contactPerson.phone : tenderData.contactPhone || '',
+        bidderApplicationLink: bidderApplicationLink
       };
 
       // Prepare data for API
@@ -556,7 +582,6 @@ export function useTenderManagement(initialTenders: Tender[] = mockTenders, init
         console.warn('API create failed, creating locally:', apiError);
         // Create tender locally if API fails
         const newTender: Tender = {
-          id: Date.now().toString(),
           ...completeTenderData
         };
         setTenders(prev => [newTender, ...prev]);
@@ -787,6 +812,29 @@ export function useTenderManagement(initialTenders: Tender[] = mockTenders, init
     await fetchData();
   }, [fetchData]);
 
+  // Function to get tender by ID
+  const getTenderById = useCallback((tenderId: string): Tender | undefined => {
+    return tenders.find(tender => tender.id === tenderId);
+  }, [tenders]);
+
+  // Function to get bidder application link for a specific tender
+  const getBidderApplicationLink = useCallback((tenderId: string): string => {
+    const tender = tenders.find(t => t.id === tenderId);
+    return tender?.bidderApplicationLink || generateBidderApplicationLink(tenderId, 'unknown');
+  }, [tenders]);
+
+  // Function to open bidder application in new tab
+  const openBidderApplication = useCallback((tenderId: string) => {
+    const link = getBidderApplicationLink(tenderId);
+    window.open(link, '_blank', 'noopener,noreferrer');
+  }, [getBidderApplicationLink]);
+
+  // Function to open bidder application by link (for direct link clicks)
+  const openBidderApplicationByLink = useCallback((link: string) => {
+    console.log('Opening bidder application link directly:', link);
+    window.open(link, '_blank', 'noopener,noreferrer');
+  }, []);
+
   console.log('Hook state - Loading:', loading, 'Tenders:', tenders.length, 'Submissions:', submissions.length, 'Error:', error);
 
   return {
@@ -807,5 +855,11 @@ export function useTenderManagement(initialTenders: Tender[] = mockTenders, init
     // Submission operations
     handleDocumentsUpdate,
     handleEvaluationComplete,
+
+    // Bidder application - MAKE SURE THESE ARE INCLUDED
+    getBidderApplicationLink,
+    openBidderApplication,
+    openBidderApplicationByLink, // <-- This was missing
+    getTenderById,
   };
 }

@@ -17,7 +17,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     
     console.log('Fetching tender with ID:', id);
 
-    const tender = await Tender.findById(id);
+    const tender = await Tender.findById(id)
+      .populate('createdBy', 'name email')
+      .populate('organization', 'name department')
+      .exec();
 
     if (!tender) {
       return NextResponse.json(
@@ -29,9 +32,53 @@ export async function GET(request: NextRequest, { params }: Params) {
       );
     }
 
+    // Transform the data to match the frontend expected format
+    const tenderData = {
+      id: tender._id.toString(),
+      title: tender.title,
+      description: tender.description,
+      status: tender.status,
+      budget: tender.value || tender.budget,
+      deadline: tender.closingDate,
+      submissions: tender.submissionsCount || 0,
+      category: tender.category,
+      publishedDate: tender.publishDate || tender.createdAt,
+      requirements: tender.requirements || [],
+      contactPerson: tender.contactPerson || {
+        name: tender.contactName || '',
+        email: tender.contactEmail || '',
+        phone: tender.contactPhone || '',
+        department: tender.department || ''
+      },
+      contactEmail: tender.contactEmail,
+      documents: tender.documents || [],
+      evaluationCriteria: tender.evaluationCriteria || [],
+      termsAndConditions: tender.termsAndConditions || [],
+      scopeOfWork: tender.scopeOfWork,
+      bidBondRequired: tender.bidBondRequired || false,
+      bidBondAmount: tender.bidBondAmount || 0,
+      preBidMeeting: tender.preBidMeeting,
+      siteVisitRequired: tender.siteVisitRequired || false,
+      siteVisitDate: tender.siteVisitDate,
+      // Additional fields for bidder application
+      referenceNumber: tender.tenderNumber,
+      department: tender.organization?.name || tender.department,
+      location: tender.location,
+      contractPeriod: tender.contractPeriod,
+      cidbGrading: tender.cidbGrading,
+      bbbeeLevel: tender.bbbeeLevel,
+      submissionMethod: tender.submissionMethod,
+      tenderFee: tender.tenderFee,
+      advertisementLink: tender.advertisementLink,
+      bidderApplicationLink: tender.bidderApplicationLink,
+      requestedItems: tender.requirements || [],
+      createdDate: tender.createdAt,
+      isDraft: tender.status === 'draft'
+    };
+
     return NextResponse.json({
       success: true,
-      data: tender
+      data: tenderData
     });
 
   } catch (error: any) {

@@ -1,7 +1,6 @@
-// components/tender-application-form.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +42,50 @@ import {
   FileSearch,
 } from "lucide-react"
 
+// API Client for tender applications
+class TenderApplicationAPI {
+  private static baseURL = '/api/tender-applications';
+
+  static async getTenderById(tenderId: string) {
+    const response = await fetch(`/api/tenders/${tenderId}`);
+    if (!response.ok) throw new Error('Failed to fetch tender');
+    return response.json();
+  }
+
+  static async submitApplication(applicationData: any) {
+    const response = await fetch(this.baseURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(applicationData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to submit application');
+    }
+
+    return response.json();
+  }
+
+  static async uploadDocument(file: File, tenderId: string, applicationId: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('tenderId', tenderId);
+    formData.append('applicationId', applicationId);
+
+    const response = await fetch(`${this.baseURL}/documents`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload document');
+    }
+
+    return response.json();
+  }
+}
+
 interface Tender {
   id: string
   title: string
@@ -70,6 +113,8 @@ interface Tender {
   preBidMeeting?: string
   siteVisitRequired?: boolean
   siteVisitDate?: string
+  referenceNumber?: string
+  department?: string
 }
 
 interface ApplicationFormData {
@@ -138,18 +183,22 @@ interface ApplicationFormData {
 interface TenderApplicationFormProps {
   isOpen: boolean
   onClose: () => void
-  tender: Tender | null
+  tenderId?: string
+  tender?: Tender
   onApply: (applicationData: ApplicationFormData) => Promise<void>
 }
 
 export function TenderApplicationForm({
   isOpen,
   onClose,
-  tender,
+  tenderId,
+  tender: propTender,
   onApply,
 }: TenderApplicationFormProps) {
   const [activeTab, setActiveTab] = useState("company")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tender, setTender] = useState<Tender | null>(null)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<ApplicationFormData>({
     companyName: "",
     registrationNumber: "",
@@ -186,7 +235,60 @@ export function TenderApplicationForm({
     nonCollusion: false,
   })
 
-  if (!tender) return null
+  // Fetch tender data when component opens
+  useEffect(() => {
+    const fetchTenderData = async () => {
+      if (isOpen && tenderId && !propTender) {
+        setLoading(true)
+        try {
+          const response = await TenderApplicationAPI.getTenderById(tenderId)
+          if (response.success) {
+            setTender(response.data)
+          } else {
+            console.error('Failed to fetch tender data')
+          }
+        } catch (error) {
+          console.error('Error fetching tender:', error)
+        } finally {
+          setLoading(false)
+        }
+      } else if (propTender) {
+        // If tender is provided directly, use it
+        setTender(propTender)
+        setLoading(false)
+      }
+    }
+
+    fetchTenderData()
+  }, [isOpen, tenderId, propTender])
+
+  if (!tender) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tender Application</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8">
+            {loading ? (
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p>Loading tender information...</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p>Tender information not found.</p>
+                <Button onClick={onClose} className="mt-4">
+                  Close
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   const isExpired = new Date(tender.deadline) < new Date()
 
@@ -246,10 +348,41 @@ export function TenderApplicationForm({
     
     setIsSubmitting(true)
     try {
-      await onApply(formData)
+      // Prepare application data for submission
+      const applicationData = {
+        ...formData,
+        tenderId: tender.id,
+        tenderTitle: tender.title,
+        tenderReference: tender.referenceNumber,
+        submittedAt: new Date().toISOString(),
+        status: 'submitted',
+        totalBidAmount: getTotalBidAmount() || formData.totalBidAmount,
+      }
+
+      // Submit to API
+      const response = await TenderApplicationAPI.submitApplication(applicationData)
+      
+      // Upload documents if application was created successfully
+      if (response.success && response.data.id) {
+        const applicationId = response.data.id
+        
+        // Upload main documents
+        for (const file of formData.uploadedDocuments) {
+          await TenderApplicationAPI.uploadDocument(file, tender.id, applicationId)
+        }
+        
+        // Upload supporting documents
+        for (const doc of formData.supportingDocuments) {
+          await TenderApplicationAPI.uploadDocument(doc.file, tender.id, applicationId)
+        }
+      }
+
+      // Call the onApply callback
+      await onApply(applicationData)
       onClose()
     } catch (error) {
       console.error('Error submitting application:', error)
+      alert('Failed to submit application. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -283,6 +416,20 @@ export function TenderApplicationForm({
     return formData.breakdown.reduce((total, item) => total + item.total, 0)
   }
 
+  // Helper to extract contact information
+  const getContactPerson = () => {
+    if (typeof tender.contactPerson === 'string') {
+      return {
+        name: tender.contactPerson,
+        email: tender.contactEmail || '',
+        phone: ''
+      }
+    }
+    return tender.contactPerson
+  }
+
+  const contactPerson = getContactPerson()
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden">
@@ -307,7 +454,7 @@ export function TenderApplicationForm({
             <CardContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Reference:</span> {tender.id}
+                  <span className="font-medium">Reference:</span> {tender.referenceNumber || tender.id}
                 </div>
                 <div>
                   <span className="font-medium">Category:</span> {tender.category}
@@ -327,7 +474,17 @@ export function TenderApplicationForm({
                     {isExpired ? "Expired" : "Open"}
                   </Badge>
                 </div>
+                {contactPerson.name && (
+                  <div>
+                    <span className="font-medium">Contact:</span> {contactPerson.name}
+                  </div>
+                )}
               </div>
+              {tender.description && (
+                <div className="mt-3 text-sm">
+                  <span className="font-medium">Description:</span> {tender.description}
+                </div>
+              )}
             </CardContent>
           </Card>
         </DialogHeader>
@@ -945,7 +1102,7 @@ export function TenderApplicationForm({
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
                           <span>Tender Reference:</span>
-                          <span className="font-medium">{tender.id}</span>
+                          <span className="font-medium">{tender.referenceNumber || tender.id}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Tender Title:</span>

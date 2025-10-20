@@ -157,3 +157,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+// app/api/tender-applications/route.js
+export const dynamic = 'force-dynamic'; // Force dynamic rendering

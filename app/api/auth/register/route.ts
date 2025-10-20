@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { connectDB } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const client = await clientPromise
+    // Connect to database
+    const client = await connectDB()
     const db = client.db()
 
     // Check if user already exists

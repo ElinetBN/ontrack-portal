@@ -1,7 +1,7 @@
 // app/api/tenders/stats/route.ts - Statistics
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Tender } from '@/models/Tender';
+import  Tender  from '@/models/Tender';
 
 export async function GET(request: NextRequest) {
   try {

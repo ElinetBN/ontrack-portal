@@ -1,7 +1,7 @@
 // app/api/tenders/bulk/route.ts - Bulk operations
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Tender } from '@/models/Tender';
+import Tender from '@/models/Tender';
 
 export async function POST(request: NextRequest) {
   try {

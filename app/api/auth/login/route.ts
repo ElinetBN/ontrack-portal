@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import clientPromise from '@/lib/mongodb'
+import { connectDB } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const client = await clientPromise
+     const client = await connectDB()
     const db = client.db()
 
     // Find user by email

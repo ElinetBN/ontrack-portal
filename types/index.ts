@@ -109,3 +109,23 @@ export interface Contract {
   createdBy: string
   documents?: Document[]
 }
+
+
+// types/index.ts
+export interface NotificationResult {
+  submissionId: string
+  email: string
+  status: 'sent' | 'failed'
+  messageId?: string
+  error?: string
+}
+
+export interface NotificationRequest {
+  submissions: Submission[]
+  messageType: 'application_received' | 'under_review' | 'awarded' | 'rejected' | 'custom'
+  customMessage?: string
+  tenderDetails?: {
+    title: string
+    id?: string
+  }
+}

@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Submission, Tender } from "../types"
 import { SubmissionCard } from "./submission-card"
+import { NotificationDialog } from "./notification-dialog" // Add this import
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +21,9 @@ import {
   Clock,
   XCircle,
   Award,
-  BarChart3
+  BarChart3,
+  Mail, // Add this import
+  Send // Add this import
 } from "lucide-react"
 import {
   Select,
@@ -29,6 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // API function to fetch submissions
 async function fetchSubmissions(tenderId?: string, status?: string, page: number = 1, limit: number = 50) {
@@ -79,6 +88,9 @@ export function SubmissionsTab({
   const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [selectedSubmissions, setSelectedSubmissions] = useState<Submission[]>([])
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false)
+  const [notificationType, setNotificationType] = useState<'all' | 'filtered' | 'selected'>('all')
 
   // Helper function to map API status to Submission status
   const mapStatus = (status: string): Submission['status'] => {
@@ -188,6 +200,26 @@ export function SubmissionsTab({
     }
   }
 
+  // Notification functions
+  const handleNotifyAll = () => {
+    setSelectedSubmissions(uniqueSubmissions)
+    setNotificationType('all')
+    setNotificationDialogOpen(true)
+  }
+
+  const handleNotifyFiltered = () => {
+    setSelectedSubmissions(filteredSubmissions)
+    setNotificationType('filtered')
+    setNotificationDialogOpen(true)
+  }
+
+  const handleNotifyByStatus = (status: string) => {
+    const statusSubmissions = uniqueSubmissions.filter(sub => sub.status === status)
+    setSelectedSubmissions(statusSubmissions)
+    setNotificationType('selected')
+    setNotificationDialogOpen(true)
+  }
+
   const getStatusIcon = (status: Submission['status']) => {
     switch (status) {
       case 'submitted':
@@ -286,6 +318,15 @@ export function SubmissionsTab({
     return tender ? tender.title : tenderId
   }
 
+  // Get current tender title for notifications
+  const getCurrentTenderTitle = () => {
+    if (tenderFilter !== 'all') {
+      const tender = tenders.find(t => t.id === tenderFilter)
+      return tender?.title || 'Selected Tender'
+    }
+    return 'All Tenders'
+  }
+
   // Export submissions as CSV
   const exportSubmissions = () => {
     const headers = [
@@ -361,6 +402,46 @@ export function SubmissionsTab({
           </p>
         </div>
         <div className="flex gap-2">
+          {/* Notification Dropdown */}
+          {hasSubmissions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Notify Applicants
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleNotifyAll}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Notify All Applicants ({uniqueSubmissions.length})
+                </DropdownMenuItem>
+                {filteredSubmissions.length !== uniqueSubmissions.length && (
+                  <DropdownMenuItem onClick={handleNotifyFiltered}>
+                    <Filter className="h-4 w-4 mr-2" />
+                    Notify Filtered ({filteredSubmissions.length})
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => handleNotifyByStatus('submitted')}>
+                  <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                  Notify Submitted ({submissionStats.submitted})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNotifyByStatus('under_review')}>
+                  <Clock className="h-4 w-4 mr-2 text-yellow-500" />
+                  Notify Under Review ({submissionStats.underReview})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNotifyByStatus('awarded')}>
+                  <Award className="h-4 w-4 mr-2 text-purple-500" />
+                  Notify Awarded ({submissionStats.awarded})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNotifyByStatus('rejected')}>
+                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                  Notify Rejected ({submissionStats.rejected})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
           <Button 
             variant="outline" 
             onClick={handleRefresh}
@@ -620,6 +701,14 @@ export function SubmissionsTab({
           </CardContent>
         </Card>
       )}
+
+      {/* Notification Dialog */}
+      <NotificationDialog
+        isOpen={notificationDialogOpen}
+        onClose={() => setNotificationDialogOpen(false)}
+        submissions={selectedSubmissions}
+        tenderTitle={getCurrentTenderTitle()}
+      />
     </div>
   )
 }

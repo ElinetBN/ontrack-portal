@@ -6,6 +6,9 @@ export interface Document {
   url: string
   uploadedAt: string
   size?: string
+  status?: 'uploaded' | 'missing' | 'rejected' | 'approved'
+  reviewedAt?: string
+  notes?: string
 }
 
 export interface Tender {
@@ -42,7 +45,7 @@ export interface Submission {
   documents?: Document[]
   
   // Submitter/applicant details
-  submitter: {
+  submitter?: {
     name: string
     email: string
     phone?: string
@@ -75,6 +78,11 @@ export interface Submission {
   contactPerson?: string
   contactEmail?: string
   contactPhone?: string
+  companyRegistration?: string
+  taxNumber?: string
+  bbbeeStatus?: string
+  bbbeeLevel?: string
+  complianceStatus?: string
 }
 
 export interface Evaluation {
@@ -110,7 +118,6 @@ export interface Contract {
   documents?: Document[]
 }
 
-
 // types/index.ts
 export interface NotificationResult {
   submissionId: string
@@ -122,7 +129,7 @@ export interface NotificationResult {
 
 export interface NotificationRequest {
   submissions: Submission[]
-  messageType: 'application_received' | 'under_review' | 'awarded' | 'rejected' | 'custom'
+  messageType: 'application_received' | 'missing_documents' | 'under_review' | 'awarded' | 'rejected' | 'custom'
   customMessage?: string
   tenderDetails?: {
     title: string

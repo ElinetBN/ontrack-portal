@@ -2,9 +2,10 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { Progress } from "@/components/ui/progress"
 import { Submission, Tender } from "../types"
 import { SubmissionCard } from "./submission-card"
-import { NotificationDialog } from "./notification-dialog" // Add this import
+import { NotificationDialog } from "./notification-dialog"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,8 +23,9 @@ import {
   XCircle,
   Award,
   BarChart3,
-  Mail, // Add this import
-  Send // Add this import
+  Mail,
+  Send,
+  FileWarning
 } from "lucide-react"
 import {
   Select,
@@ -129,6 +131,18 @@ export function SubmissionsTab({
       companyName = typeof sub.company === 'string' ? sub.company : sub.company.name;
     }
 
+    // Map document status
+    const documents = (sub.documents || []).map((doc: any) => ({
+      id: doc._id || doc.id,
+      name: doc.name || doc.filename,
+      type: doc.type || 'document',
+      url: doc.url || doc.path,
+      uploadedAt: doc.uploadedAt || doc.createdAt,
+      status: doc.status || 'uploaded',
+      reviewedAt: doc.reviewedAt,
+      notes: doc.notes
+    }))
+
     return {
       id: sub._id || sub.id,
       tenderId: (typeof sub.tender === 'object' ? sub.tender._id : sub.tender) || sub.tenderId,
@@ -136,7 +150,7 @@ export function SubmissionsTab({
       company: companyName,
       proposal: sub.proposal?.title || sub.proposalTitle || 'No proposal title',
       amount: sub.financial?.totalBidAmount || sub.totalBidAmount || 0,
-      documents: sub.documents || [],
+      documents: documents,
       status: mapStatus(sub.status),
       score: sub.score || 0,
       submittedAt: sub.submittedAt || sub.createdAt,
@@ -220,6 +234,20 @@ export function SubmissionsTab({
     setNotificationDialogOpen(true)
   }
 
+  const handleNotifyMissingDocuments = () => {
+    const missingDocsSubmissions = uniqueSubmissions.filter(sub => 
+      sub.documents && sub.documents.some(doc => doc.status === 'missing' || doc.status === 'rejected')
+    )
+    setSelectedSubmissions(missingDocsSubmissions)
+    setNotificationType('selected')
+    setNotificationDialogOpen(true)
+  }
+
+  const handleNotifyApplicants = () => {
+    setSelectedSubmissions(uniqueSubmissions)
+    setNotificationDialogOpen(true)
+  }
+
   const getStatusIcon = (status: Submission['status']) => {
     switch (status) {
       case 'submitted':
@@ -291,6 +319,9 @@ export function SubmissionsTab({
     const evaluated = uniqueSubmissions.filter(sub => sub.status === "evaluated").length
     const awarded = uniqueSubmissions.filter(sub => sub.status === "awarded").length
     const rejected = uniqueSubmissions.filter(sub => sub.status === "rejected").length
+    const withMissingDocs = uniqueSubmissions.filter(sub => 
+      sub.documents && sub.documents.some(doc => doc.status === 'missing' || doc.status === 'rejected')
+    ).length
 
     const submissionStats = {
       total,
@@ -299,6 +330,7 @@ export function SubmissionsTab({
       evaluated,
       awarded,
       rejected,
+      withMissingDocs,
       compliant: evaluated + awarded // Consider evaluated and awarded as compliant
     }
 
@@ -341,23 +373,30 @@ export function SubmissionsTab({
       'Submitted Date',
       'Score',
       'BBBEE Status',
-      'BBBEE Level'
+      'BBBEE Level',
+      'Missing Documents'
     ]
     
-    const csvData = uniqueSubmissions.map(sub => [
-      sub.applicationNumber || sub.id,
-      getTenderTitle(sub.tenderId),
-      sub.supplier,
-      sub.companyName || sub.company,
-      sub.contactPerson || 'N/A',
-      sub.contactEmail || 'N/A',
-      sub.bidAmount || `R ${sub.amount?.toLocaleString()}`,
-      sub.status.replace('_', ' ').toUpperCase(),
-      new Date(sub.submittedAt).toLocaleDateString(),
-      sub.score?.toString() || 'N/A',
-      sub.bbbeeStatus || 'N/A',
-      sub.bbbeeLevel || 'N/A'
-    ])
+    const csvData = uniqueSubmissions.map(sub => {
+      const missingDocs = sub.documents?.filter(doc => doc.status === 'missing' || doc.status === 'rejected')
+        .map(doc => doc.name).join('; ') || 'None'
+      
+      return [
+        sub.applicationNumber || sub.id,
+        getTenderTitle(sub.tenderId),
+        sub.supplier,
+        sub.companyName || sub.company,
+        sub.contactPerson || 'N/A',
+        sub.contactEmail || 'N/A',
+        sub.bidAmount || `R ${sub.amount?.toLocaleString()}`,
+        sub.status.replace('_', ' ').toUpperCase(),
+        new Date(sub.submittedAt).toLocaleDateString(),
+        sub.score?.toString() || 'N/A',
+        sub.bbbeeStatus || 'N/A',
+        sub.bbbeeLevel || 'N/A',
+        missingDocs
+      ]
+    })
 
     const csvContent = [
       headers.join(','),
@@ -402,24 +441,41 @@ export function SubmissionsTab({
           </p>
         </div>
         <div className="flex gap-2">
-          {/* Notification Dropdown */}
+          {/* Notification Button */}
+          {hasSubmissions && (
+            <Button 
+              variant="outline"
+              onClick={handleNotifyApplicants}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Notify Applicants
+            </Button>
+          )}
+          
+          {/* Notification Dropdown (Alternative) */}
           {hasSubmissions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Notify Applicants
+                  <Send className="h-4 w-4 mr-2" />
+                  Quick Notify
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleNotifyAll}>
-                  <Send className="h-4 w-4 mr-2" />
+                  <Mail className="h-4 w-4 mr-2" />
                   Notify All Applicants ({uniqueSubmissions.length})
                 </DropdownMenuItem>
                 {filteredSubmissions.length !== uniqueSubmissions.length && (
                   <DropdownMenuItem onClick={handleNotifyFiltered}>
                     <Filter className="h-4 w-4 mr-2" />
                     Notify Filtered ({filteredSubmissions.length})
+                  </DropdownMenuItem>
+                )}
+                {submissionStats.withMissingDocs > 0 && (
+                  <DropdownMenuItem onClick={handleNotifyMissingDocuments}>
+                    <FileWarning className="h-4 w-4 mr-2 text-amber-500" />
+                    Notify Missing Documents ({submissionStats.withMissingDocs})
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleNotifyByStatus('submitted')}>
@@ -467,7 +523,7 @@ export function SubmissionsTab({
 
       {/* Submission Statistics */}
       {hasSubmissions && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -546,6 +602,21 @@ export function SubmissionsTab({
               </div>
             </CardContent>
           </Card>
+          {submissionStats.withMissingDocs > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-amber-600">{submissionStats.withMissingDocs}</p>
+                    <p className="text-sm text-muted-foreground">Missing Docs</p>
+                  </div>
+                  <div className="bg-amber-100 p-2 rounded-full">
+                    <FileWarning className="h-4 w-4 text-amber-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

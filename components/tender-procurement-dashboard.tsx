@@ -478,6 +478,25 @@ export function TenderProcurementDashboard() {
     }
   }
 
+  // Handle contract document operations
+  const handleContractDocumentUpload = (tenderId: string, file: File) => {
+    console.log('Contract document uploaded:', { tenderId, fileName: file.name });
+    // You can integrate with your backend API here
+    // For now, we'll just log the action
+  }
+
+  const handleContractDocumentDownload = (tenderId: string, document?: any) => {
+    console.log('Contract document download:', { tenderId, document });
+    // You can integrate with your backend API here
+    // For now, we'll just log the action
+  }
+
+  const handleContractDocumentView = (tenderId: string, document: any) => {
+    console.log('Contract document view:', { tenderId, document });
+    // You can integrate with your backend API here
+    // For now, we'll just log the action
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <PortalHeader
@@ -574,6 +593,10 @@ export function TenderProcurementDashboard() {
               tenders={tenders}
               onTenderInfoClick={handleTenderInfoClick}
               userRole={userRole}
+              // Add these new props for enhanced document management
+              onDocumentUpload={handleContractDocumentUpload}
+              onDocumentDownload={handleContractDocumentDownload}
+              onDocumentView={handleContractDocumentView}
             />
           </TabsContent>
 

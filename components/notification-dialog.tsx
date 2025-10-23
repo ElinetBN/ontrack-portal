@@ -33,7 +33,9 @@ import {
   Building,
   User,
   FileCheck,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  EyeOff
 } from "lucide-react"
 
 interface NotificationDialogProps {
@@ -41,6 +43,7 @@ interface NotificationDialogProps {
   onClose: () => void
   submissions: Submission[]
   tenderTitle: string
+  onSubmissionsSelect?: (submissions: Submission[]) => void // Add this prop
 }
 
 type NotificationStep = 'selection' | 'template' | 'review' | 'sending' | 'complete'
@@ -65,6 +68,8 @@ interface NotificationTemplate {
 
 interface SendResult {
   submissionId: string
+  applicantName: string
+  companyName: string
   email: string
   status: 'sent' | 'failed'
   messageId?: string
@@ -72,7 +77,13 @@ interface SendResult {
   timestamp?: string
 }
 
-export function NotificationDialog({ isOpen, onClose, submissions, tenderTitle }: NotificationDialogProps) {
+export function NotificationDialog({ 
+  isOpen, 
+  onClose, 
+  submissions, 
+  tenderTitle,
+  onSubmissionsSelect // Add this prop
+}: NotificationDialogProps) {
   const [currentStep, setCurrentStep] = useState<NotificationStep>('selection')
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
   const [selectedRecipients, setSelectedRecipients] = useState<'all' | 'missing_docs' | 'status'>('all')
@@ -81,6 +92,9 @@ export function NotificationDialog({ isOpen, onClose, submissions, tenderTitle }
   const [isSending, setIsSending] = useState(false)
   const [progress, setProgress] = useState(0)
   const [sendResults, setSendResults] = useState<SendResult[]>([])
+  const [failedDetails, setFailedDetails] = useState<SendResult[]>([])
+  const [showFailedDetails, setShowFailedDetails] = useState(false)
+  const [selectedSubmissions, setSelectedSubmissions] = useState<Submission[]>([]) // Add this state
   const [stats, setStats] = useState<NotificationStats>({
     total: submissions.length,
     withMissingDocs: 0,
@@ -96,6 +110,11 @@ export function NotificationDialog({ isOpen, onClose, submissions, tenderTitle }
     ).length
 
     setStats(prev => ({ ...prev, withMissingDocs }))
+  }, [submissions])
+
+  // Update selected submissions when submissions prop changes
+  useEffect(() => {
+    setSelectedSubmissions(submissions)
   }, [submissions])
 
   // Notification templates
@@ -268,10 +287,11 @@ Tender Management Team`,
     setIsSending(true)
     setCurrentStep('sending')
     setSendResults([])
+    setFailedDetails([])
+    setShowFailedDetails(false)
     
     let successful = 0
     let failed = 0
-    const results: SendResult[] = []
     
     try {
       // Send all notifications in a single API call
@@ -296,6 +316,7 @@ Tender Management Team`,
         successful = result.successful
         failed = result.failed
         setSendResults(result.results || [])
+        setFailedDetails(result.failedDetails || [])
         
         // Update progress
         setProgress(100)
@@ -331,6 +352,9 @@ Tender Management Team`,
     setCustomMessage('')
     setProgress(0)
     setSendResults([])
+    setFailedDetails([])
+    setShowFailedDetails(false)
+    setSelectedSubmissions([])
     setStats({
       total: submissions.length,
       withMissingDocs: 0,
@@ -341,6 +365,25 @@ Tender Management Team`,
     onClose()
   }
 
+  const handleRetryFailed = () => {
+    const failedSubmissions = filteredRecipients.filter(sub => 
+      sendResults.some(result => 
+        result.submissionId === sub.id && result.status === 'failed'
+      )
+    )
+    
+    if (failedSubmissions.length > 0) {
+      setSelectedSubmissions(failedSubmissions)
+      setCurrentStep('selection')
+      setShowFailedDetails(false)
+      
+      // Notify parent component about the selected submissions for retry
+      if (onSubmissionsSelect) {
+        onSubmissionsSelect(failedSubmissions)
+      }
+    }
+  }
+
   const handleRestart = () => {
     setCurrentStep('selection')
     setSelectedTemplate('')
@@ -349,6 +392,9 @@ Tender Management Team`,
     setCustomMessage('')
     setProgress(0)
     setSendResults([])
+    setFailedDetails([])
+    setShowFailedDetails(false)
+    setSelectedSubmissions(submissions) // Reset to all submissions
     setStats({
       total: submissions.length,
       withMissingDocs: 0,
@@ -866,12 +912,21 @@ Tender Management Team`,
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-600">
-                  <CheckCircle className="h-6 w-6" />
-                  Notifications Sent Successfully!
+                <CardTitle className={`flex items-center gap-2 ${
+                  stats.failed > 0 ? 'text-amber-600' : 'text-green-600'
+                }`}>
+                  {stats.failed > 0 ? (
+                    <AlertCircle className="h-6 w-6" />
+                  ) : (
+                    <CheckCircle className="h-6 w-6" />
+                  )}
+                  {stats.failed > 0 ? `${stats.failed} Notifications Failed to Send` : 'All Notifications Sent Successfully!'}
                 </CardTitle>
                 <CardDescription>
-                  All emails have been processed through Resend
+                  {stats.failed > 0 
+                    ? `${stats.successful} sent successfully, ${stats.failed} failed to send`
+                    : 'All emails have been processed through Resend'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -890,19 +945,91 @@ Tender Management Team`,
                   </div>
                 </div>
 
-                {stats.failed > 0 ? (
-                  <div className="flex items-center gap-3 p-4 border border-amber-200 bg-amber-50 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800">
-                        {stats.failed} notification{stats.failed !== 1 ? 's' : ''} failed to send
-                      </p>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Check Resend dashboard for detailed delivery reports and error information.
-                      </p>
+                {stats.failed > 0 && (
+                  <>
+                    <div className="flex items-center gap-3 p-4 border border-amber-200 bg-amber-50 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-800">
+                          {stats.failed} notification{stats.failed !== 1 ? 's' : ''} failed to send
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Check Resend dashboard for detailed delivery reports and error information.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFailedDetails(!showFailedDetails)}
+                        className="whitespace-nowrap"
+                      >
+                        {showFailedDetails ? (
+                          <EyeOff className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Eye className="h-4 w-4 mr-2" />
+                        )}
+                        {showFailedDetails ? 'Hide Details' : 'Show Details'}
+                      </Button>
                     </div>
-                  </div>
-                ) : (
+
+                    {showFailedDetails && failedDetails.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm">Failed Notifications Details</CardTitle>
+                          <CardDescription>
+                            Detailed information about failed email deliveries
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-3 max-h-60 overflow-y-auto">
+                            {failedDetails.map((failed, index) => (
+                              <div key={index} className="p-3 border border-red-200 bg-red-50 rounded-lg">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-red-800">
+                                      {failed.applicantName} - {failed.companyName}
+                                    </p>
+                                    <p className="text-xs text-red-700 mt-1">{failed.email}</p>
+                                    <p className="text-xs text-red-600 mt-2">
+                                      <strong>Error:</strong> {failed.error}
+                                    </p>
+                                    {failed.timestamp && (
+                                      <p className="text-xs text-red-500 mt-1">
+                                        <strong>Time:</strong> {new Date(failed.timestamp).toLocaleString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-4 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleRetryFailed}
+                              className="flex-1"
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Retry Failed ({failedDetails.length})
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={viewResendDashboard}
+                              className="flex-1"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Resend Dashboard
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
+
+                {stats.failed === 0 && (
                   <div className="flex items-center gap-3 p-4 border border-green-200 bg-green-50 rounded-lg">
                     <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
                     <div>
@@ -968,10 +1095,27 @@ Tender Management Team`,
 
           {currentStep === 'complete' ? (
             <div className="flex gap-2 w-full">
-              <Button variant="outline" onClick={handleRestart} className="flex-1">
-                Send More Notifications
+              {stats.failed > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleRetryFailed}
+                  className="flex-1"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Retry Failed ({stats.failed})
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={handleRestart}
+                className={stats.failed > 0 ? "flex-1" : "flex-1"}
+              >
+                Send New Notifications
               </Button>
-              <Button onClick={handleClose} className="flex-1">
+              <Button 
+                onClick={handleClose}
+                className={stats.failed > 0 ? "flex-1" : "flex-1"}
+              >
                 Done
               </Button>
             </div>

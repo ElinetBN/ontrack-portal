@@ -93,6 +93,7 @@ export function SubmissionsTab({
   const [selectedSubmissions, setSelectedSubmissions] = useState<Submission[]>([])
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false)
   const [notificationType, setNotificationType] = useState<'all' | 'filtered' | 'selected'>('all')
+  const [isSubmittingEvaluation, setIsSubmittingEvaluation] = useState(false)
 
   // Helper function to map API status to Submission status
   const mapStatus = (status: string): Submission['status'] => {
@@ -154,7 +155,7 @@ export function SubmissionsTab({
       status: mapStatus(sub.status),
       score: sub.score || 0,
       submittedAt: sub.submittedAt || sub.createdAt,
-      evaluation: sub.evaluation,
+      evaluation: sub.evaluation || {},
       tenderTitle: tenderTitle,
       companyName: companyName,
       submissionDate: sub.submittedAt || sub.createdAt,
@@ -211,6 +212,66 @@ export function SubmissionsTab({
       console.error('Error refreshing submissions:', error)
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  // Handle evaluation submission
+  const handleEvaluationSubmit = async (submissionId: string, score: number, status: string, comments: string) => {
+    setIsSubmittingEvaluation(true)
+    try {
+      console.log("Submitting evaluation:", { submissionId, score, status, comments })
+      
+      // Call API to update the evaluation
+      const response = await fetch('/api/submissions/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          submissionId,
+          score,
+          status,
+          comments,
+          evaluatedAt: new Date().toISOString()
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit evaluation')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update local state
+        setSubmissions(prev => prev.map(sub => 
+          sub.id === submissionId 
+            ? { 
+                ...sub, 
+                score, 
+                status: status as any,
+                evaluation: {
+                  ...sub.evaluation,
+                  comments,
+                  evaluatedAt: new Date().toISOString()
+                }
+              }
+            : sub
+        ))
+        
+        // Refresh the data
+        await handleRefresh()
+        
+        console.log("Evaluation submitted successfully")
+        return Promise.resolve()
+      } else {
+        throw new Error(result.error || 'Failed to submit evaluation')
+      }
+    } catch (error) {
+      console.error('Error submitting evaluation:', error)
+      return Promise.reject(error)
+    } finally {
+      setIsSubmittingEvaluation(false)
     }
   }
 
@@ -679,6 +740,7 @@ export function SubmissionsTab({
                   tenderTitle={getTenderTitle(submission.tenderId)}
                   onDocumentsUpdate={onDocumentsUpdate}
                   onReviewClick={onReviewClick}
+                  onEvaluationSubmit={handleEvaluationSubmit}
                 />
               ))
             ) : (
@@ -779,6 +841,7 @@ export function SubmissionsTab({
         onClose={() => setNotificationDialogOpen(false)}
         submissions={selectedSubmissions}
         tenderTitle={getCurrentTenderTitle()}
+        onSubmissionsSelect={setSelectedSubmissions}
       />
     </div>
   )
